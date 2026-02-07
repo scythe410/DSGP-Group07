@@ -13,3 +13,6 @@ Uses YOLOv8-seg to detect scratches and dents in cars.
 3. Model training is done in Google Colab using T4 GPU
 4. Model is saved in the Google Drive for using for prediction (not added to GitHub)
 5. Model evaluation through analyzing metrics
+
+*NOTES*
+1. Install dependencies using: pip install -r requirements.txt
