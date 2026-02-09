@@ -4,7 +4,6 @@ __pycache__/
 
 # Google Drive / local models
 /content/drive/
-*.pt
 
 # Dataset folders
 Car-Damage-Analizer-1/
