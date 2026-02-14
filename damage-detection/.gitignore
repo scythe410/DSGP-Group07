@@ -11,3 +11,6 @@ Car-Damage-Analizer-1/
 .env
 .ipynb_checkpoints/
 datasets/
+
+# Machine dependent information
+.idea/
