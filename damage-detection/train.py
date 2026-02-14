@@ -29,26 +29,68 @@ for split in splits:
     n_lbls = len([f for f in os.listdir(lbl_dir) if f.lower().endswith(".txt")])
     print(f"{split.upper():6} | Images: {n_imgs:4} | Labels: {n_lbls:4} | Match: {n_imgs == n_lbls}")
 
+# analyse class distribution
+train_lbl_dir = os.path.join(DATASET_ROOT, "train", "labels")
+class_counts = {0:0, 1:0} # 0= dents, 1=scratches
+for label_file in os.listdir(train_lbl_dir):
+  if not label_file.endswith(".txt"):
+    continue
+
+  with open(os.path.join(train_lbl_dir, label_file), 'r') as f:
+    for line in f:
+      class_id = int(line.split()[0])
+      class_counts[class_id] += 1
+total_instances = sum(class_counts.values())
+dent_ratio = class_counts[0] / total_instances
+scratch_ratio = class_counts[1] / total_instances
+print(f"Dents: {class_counts[0]:4} instances ({dent_ratio*100:.1f}%)")
+print(f"Scratches: {class_counts[1]:4} instances ({scratch_ratio*100:.1f}%)")
+print(f"Imbalance ratio: {class_counts[1]/class_counts[0]:.2f}:1")
+
+# shows class imbalance so proves copy_paste and mosaic settings
 # model training
 model = YOLO("yolov8m-seg.pt")
 model.train(
-    data = os.path.join(DATASET_ROOT, "data.yaml"),
-    epochs = 80,
-    imgsz = 640,
-    batch = 16,
-    device = 0,
-    workers = 2,
-    optimizer = "SGD",
-    lr0 = 0.01,
-    cos_lr = True,
-    amp = True,
-    patience = 10,
-    mosaic = 0.0,
-    close_mosaic = 0
+    data=os.path.join(DATASET_ROOT, "data.yaml"),
+    epochs=100,
+    patience=20,
+    imgsz=640,
+    batch=16,
+    device=0,
+    workers=4,
+    cache="ram",
+    amp=True,
+    optimizer="AdamW",
+    lr0=0.001,
+    lrf=0.01,
+    weight_decay=0.0005,
+    cos_lr=True,
+    mosaic=0.9,
+    close_mosaic=10,
+    mixup=0.2,
+    copy_paste=0.5,
+    degrees=15,
+    translate=0.15,
+    scale=0.7,
+    shear=0.0,
+    perspective=0.0,
+    flipud=0.0,
+    fliplr=0.5,
+    hsv_h=0.015,
+    hsv_s=0.7,
+    hsv_v=0.4,
+    box=7.5,
+    cls=2.5,
+    dfl=1.5,
+    plots=True,
+    save=True,
+    save_period=10,
+    exist_ok=True,
+    verbose=True,
 )
 
 # save model
-model_path = os.path.join(MODEL_DIR, "v1.pt")
+model_path = os.path.join(MODEL_DIR, "v2.pt")
 model.save(model_path)
 print (f"Model saved at: {model_path}")
 
