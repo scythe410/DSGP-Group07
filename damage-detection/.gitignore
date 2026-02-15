@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Google Drive / local models
+/content/drive/
+
+# Dataset folders
+Car-Damage-Analizer-1/
+
+.env
+.ipynb_checkpoints/
+datasets/
+
+# Machine dependent information
+.idea/
