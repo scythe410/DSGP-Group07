@@ -1,0 +1,12 @@
+Version 01 Metrics 
+
+Segmentation Metrics
+mAP50(mask): 0.399
+mAP50-95(mask): 0.187
+Precision(mask): 0.496
+Recall(mask): 0.432
+
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95)     Mask(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 17/17 1.9it/s 8.7s
+                   all        268       1029      0.499       0.49      0.454      0.253      0.496      0.432      0.399      0.187
+                 dents        124        146      0.597      0.527      0.529       0.28      0.584      0.479      0.472      0.222
+             scratches        151        883        0.4      0.453       0.38      0.226      0.408      0.384      0.326      0.152
