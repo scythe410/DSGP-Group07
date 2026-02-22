@@ -173,7 +173,7 @@ st.markdown("""
 # Helpers
 @st.cache_resource
 def load_yolo_model():
-    model_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v1.pt")
+    model_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v2.pt")
     if not os.path.exists(model_path):
         st.error(f"Model not found at {model_path}")
         return None
