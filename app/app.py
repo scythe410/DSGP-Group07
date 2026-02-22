@@ -8,7 +8,7 @@ import pickle
 from PIL import Image
 from ultralytics import YOLO
 
-# --- Path Setup ---
+# Path Setup
 # Get the absolute path to the repository root
 # Current file is in app/app.py, so root is two levels up
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -19,9 +19,9 @@ sys.path.append(os.path.join(ROOT_DIR, 'damage-detection'))
 
 from predictor import predict_price
 
-# --- Configuration & Design ---
+# Configuration & Design
 st.set_page_config(
-    page_title="AutoAnalyze Pro",
+    page_title="PRC DMG EVL SYS",
     page_icon="[PRC DMG EVL SYS]",
     layout="wide"
 )
@@ -170,7 +170,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Helpers ---
+# Helpers
 @st.cache_resource
 def load_yolo_model():
     model_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v1.pt")
@@ -195,14 +195,14 @@ def load_price_model_artifacts():
         st.error(f"Error loading price model: {e}")
         return None, None
 
-# --- UI Layout ---
+# UI Layout
 
-st.title("AutoAnalyze Pro")
-st.markdown("### Vehicle Damage & Price Analysis System")
+#st.title("PRC DMG EVL SYS")
+st.markdown("### PRC DMG EVL SYS")
 
 tab1, tab2 = st.tabs(["Damage Detection", "Price Prediction"])
 
-# --- Tab 1: Damage Detection ---
+# Tab 1: Damage Detection
 with tab1:
     st.markdown("#### Upload Vehicle Image")
     st.write("Detect dents, scratches, and other exterior damage automatically.")
@@ -248,7 +248,7 @@ with tab1:
                     except:
                         pass
 
-# --- Tab 2: Price Prediction ---
+# Tab 2: Price Prediction
 with tab2:
     st.markdown("#### Vehicle Details")
     st.write("Enter vehicle specifications to estimate market value.")
