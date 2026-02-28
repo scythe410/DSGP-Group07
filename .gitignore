@@ -1,1 +1,8 @@
 /notes.txt
+__pycache__/
+*.pyc
+data/raw/
+data/processed/
+data/pipeline/*.csv
+data/testing/*.csv
+data/testing/*.log
