@@ -15,6 +15,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(current_dir))
 # Define paths relative to Project Root
 SCRAPER_SCRIPT = os.path.join(PROJECT_ROOT, "scraping", "scrapers", "scrape_listings.py")
 CLEANER_SCRIPT = os.path.join(PROJECT_ROOT, "data", "pipeline", "clean_data.py")
+ANOMALY_SCRIPT = os.path.join(PROJECT_ROOT, "data", "pipeline", "detect_anomalies.py")
 DRIFT_SCRIPT = os.path.join(PROJECT_ROOT, "data", "pipeline", "detect_drift.py")
 TRAINER_SCRIPT = os.path.join(PROJECT_ROOT, "data", "pipeline", "train_model.py")
 DRIFT_FLAG_FILE = os.path.join(PROJECT_ROOT, "data", "processed", "drift_detected.flag")
@@ -60,6 +61,11 @@ def main():
     # 1. Scraping
     if not run_script(SCRAPER_SCRIPT, "Scraper"):
         logging.error("Scraping failed. Aborting pipeline.")
+        sys.exit(1)
+        
+    # 1.5 Anomaly Detection
+    if not run_script(ANOMALY_SCRIPT, "Anomaly Detector"):
+        logging.error("Anomaly Detection failed. Aborting pipeline.")
         sys.exit(1)
         
     # 2. Cleaning
