@@ -1,0 +1,400 @@
+/* Upload Box Styles */
+.upload-box { background: white; border: 2px dashed #DCDBD8; padding: 60px 40px; text-align: center; border-radius: 16px; margin-bottom: 40px; cursor: pointer; transition: all 0.2s; }
+.upload-box:hover { border-color: #111; }
+#damage-results { display: none; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 40px;
+        }
+
+        /* Car Diagram Section */
+        .car-diagram-section {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .car-diagram-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .car-image {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+
+        /* Yellow border circle */
+        .damage-indicator-circle {
+            position: absolute;
+            width: 320px;
+            height: 280px;
+            border: 3px solid #ffd700;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Labels and badges */
+        .label-badge {
+            position: absolute;
+            background-color: #ffeb3b;
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .warning-icon {
+            width: 16px;
+            height: 16px;
+            background-color: #ffd700;
+            border-radius: 50%;
+            border: 2px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .label-top {
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .label-center {
+            top: 45%;
+            left: 45%;
+            transform: translate(-50%, -50%);
+        }
+
+        .label-right {
+            top: 35%;
+            right: 5%;
+        }
+
+        /* Numbered circles */
+        .number-circle {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 11;
+        }
+
+        .number-top {
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .number-right {
+            top: 25%;
+            right: 2%;
+        }
+
+        .number-center {
+            top: 42%;
+            left: 42%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Side labels */
+        .side-label {
+            position: absolute;
+            font-size: 12px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        .label-rear {
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        .label-right-side {
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .label-front {
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        /* Cards Section */
+        .cards-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .assessment-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            position: relative;
+        }
+
+        .assessment-card.left-card {
+            grid-column: 1;
+        }
+
+        .assessment-card.center-card {
+            grid-column: 2;
+            border: 2px solid #000;
+        }
+
+        .assessment-card.right-card {
+            grid-column: 3;
+        }
+
+        .card-date {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .country-flag {
+            width: 20px;
+            height: 14px;
+            background: linear-gradient(to right, #002395 0%, #002395 33%, #ffc400 33%, #ffc400 66%, #ef3340 66%, #ef3340 100%);
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-icon {
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #ccc;
+            cursor: help;
+        }
+
+        .card-section {
+            margin-bottom: 20px;
+        }
+
+        .card-section-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .card-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 8px;
+        }
+
+        .card-section-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .damage-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .damage-tag {
+            background-color: #ffeb3b;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .damage-groups {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .damage-group-item {
+            font-size: 13px;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 8px;
+        }
+
+        .more-details {
+            font-size: 13px;
+            color: #000;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .more-details-text {
+            font-weight: 500;
+        }
+
+        .more-details-text strong {
+            font-weight: 700;
+        }
+
+        .chevron {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Navigation arrows */
+        .nav-arrow {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            background-color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+        }
+
+        .nav-arrow.left {
+            left: -60px;
+        }
+
+        .nav-arrow.right {
+            right: -60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .cards-section {
+                grid-template-columns: 1fr;
+            }
+
+            .assessment-card.left-card,
+            .assessment-card.center-card,
+            .assessment-card.right-card {
+                grid-column: auto;
+            }
+
+            .nav-arrow {
+                position: static;
+                margin: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .car-diagram-section {
+                padding: 20px;
+            }
+
+            .label-badge {
+                font-size: 11px;
+                padding: 3px 8px;
+            }
+        }
+    
