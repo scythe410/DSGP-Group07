@@ -4,14 +4,3 @@ scikit-learn
 pandas
 matplotlib
 pyyaml
-openai
-pillow
-requests
-python-dotenv
-transformers==4.45.2
-accelerate==0.26.0
-opencv-python
-huggingface-hub
-numpy
-streamlit
-torch

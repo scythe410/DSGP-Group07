@@ -14,5 +14,3 @@ datasets/
 
 # Machine dependent information
 .idea/
-
-.venv/
