@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                // Determine API URL (using localhost for local development)
-                const apiUrl = 'http://127.0.0.1:8000/predict_price';
+                // Determine API URL (using Hugging Face Space for live deployment)
+                const apiUrl = 'https://scythe410-dsgp-007.hf.space/predict_price';
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(`Error: ${data.detail || 'Prediction failed.'}`);
                 }
             } catch (error) {
-                alert('Connection error. Is the backend FastAPI server running on Port 8000?');
+                alert('Connection error communicating with the Hugging Face backend API.');
                 console.error(error);
             } finally {
                 // Stop Loading State
