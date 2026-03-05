@@ -19,3 +19,4 @@ fastapi
 uvicorn
 python-multipart
 huggingface-hub
+lightgbm
