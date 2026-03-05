@@ -9,6 +9,7 @@ import io
 import cv2
 import numpy as np
 from PIL import Image
+import base64
 from ultralytics import YOLO
 
 # Add root so we can import models from other folders cleanly
@@ -65,7 +66,7 @@ def load_models():
         print(f"[ERROR] Could not load XGBoost model: {e}")
         
     try:
-        yolo_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v1.pt")
+        yolo_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v2.pt")
         if os.path.exists(yolo_path):
             yolo_damage_model = YOLO(yolo_path)
             print("[INFO] YOLO Damage Model loaded seamlessly.")
@@ -144,10 +145,22 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
                     if class_name not in detected_groups:
                         detected_groups.append(class_name)
                         
+        # Render the annotated image with bounding boxes
+        plotted_img_array = results[0].plot()
+        # Convert BGR (OpenCV) to RGB (PIL)
+        plotted_img_rgb = plotted_img_array[..., ::-1] 
+        annotated_image = Image.fromarray(plotted_img_rgb)
+        
+        # Base64 encode the resulting image
+        buffered = io.BytesIO()
+        annotated_image.save(buffered, format="JPEG")
+        encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                        
         if not has_damage:
              return {
                  "status": "success", 
                  "has_damage": False,
+                 "image": f"data:image/jpeg;base64,{encoded_image}",
                  "message": "No visible damage detected by YOLO."
              }
              
@@ -189,6 +202,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         return {
             "status": "success",
             "has_damage": True,
+            "image": f"data:image/jpeg;base64,{encoded_image}",
             "detected_groups": detected_groups,
             "vlm_reasoning": vlm_mock_text,
             "estimated_cost_lkr": cost,

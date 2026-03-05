@@ -64,6 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (data.has_damage) {
+                    // Swap the original preview with the YOLO-annotated image from the backend
+                    if (data.image && resultImage) {
+                        resultImage.src = data.image;
+                    }
+
                     const tagsContainer = document.querySelector('.damage-tags');
                     if (tagsContainer) {
                         tagsContainer.innerHTML = data.sides_affected.map(s =>
