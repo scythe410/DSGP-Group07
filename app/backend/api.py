@@ -10,6 +10,8 @@ import cv2
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
+import base64
+from huggingface_hub import hf_hub_download
 
 # Add root so we can import models from other folders cleanly
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,8 +55,9 @@ yolo_damage_model = None
 def load_models():
     global prediction_model, preprocessing_pipeline, yolo_damage_model
     try:
-        model_path = os.path.join(ROOT_DIR, "price-model", "best_optimized_model.pkl")
-        preproc_path = os.path.join(ROOT_DIR, "price-model", "preprocessing_optimized.pkl")
+        print("[INFO] Downloading XGBoost models from Hugging Face Hub...")
+        model_path = hf_hub_download(repo_id="scythe410/sri-lankan-vehicle-price-prediction", filename="best_optimized_model.pkl")
+        preproc_path = hf_hub_download(repo_id="scythe410/sri-lankan-vehicle-price-prediction", filename="preprocessing_optimized.pkl")
         
         with open(model_path, 'rb') as f:
             prediction_model = pickle.load(f)
@@ -65,12 +68,10 @@ def load_models():
         print(f"[ERROR] Could not load XGBoost model: {e}")
         
     try:
-        yolo_path = os.path.join(ROOT_DIR, "damage-detection", "models", "v1.pt")
-        if os.path.exists(yolo_path):
-            yolo_damage_model = YOLO(yolo_path)
-            print("[INFO] YOLO Damage Model loaded seamlessly.")
-        else:
-             print(f"[WARNING] YOLO model not found at {yolo_path}")
+        print("[INFO] Downloading YOLO damage model from Hugging Face Hub...")
+        yolo_path = hf_hub_download(repo_id="scythe410/vehicle-damage-detection-yolo", filename="v2.pt")
+        yolo_damage_model = YOLO(yolo_path)
+        print("[INFO] YOLO Damage Model loaded seamlessly.")
     except Exception as e:
         print(f"[ERROR] Could not load YOLO model: {e}")
 

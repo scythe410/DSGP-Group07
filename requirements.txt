@@ -18,3 +18,4 @@ seaborn
 fastapi
 uvicorn
 python-multipart
+huggingface-hub
