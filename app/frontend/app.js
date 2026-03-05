@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                // Determine API URL (using Hugging Face Space for live deployment)
-                const apiUrl = 'https://scythe410-dsgp-007.hf.space/predict_price';
+                // Determine API URL (using localhost for local development)
+                const apiUrl = 'http://127.0.0.1:8000/predict_price';
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
