@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('http://127.0.0.1:8000/analyze_damage', {
+            const response = await fetch('https://scythe410-dsgp-007.hf.space/analyze_damage', {
                 method: 'POST',
                 body: formData
             });
