@@ -129,6 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Show Result
+                if (data.image_base64 && resultImage) {
+                    resultImage.src = "data:image/jpeg;base64," + data.image_base64;
+                }
                 if (processingState) processingState.style.display = 'none';
                 if (damageResults) damageResults.style.display = 'block';
             } else {

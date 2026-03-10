@@ -137,6 +137,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         
         detected_groups = []
         has_damage = False
+        plotted_image_b64 = None
         for r in results:
             if len(r.boxes) > 0:
                 has_damage = True
@@ -144,6 +145,12 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
                     class_name = yolo_damage_model.names[int(cls_id)]
                     if class_name not in detected_groups:
                         detected_groups.append(class_name)
+        
+        if has_damage:
+            # Generate image with bounding boxes, encode via OpenCV
+            im_bgr = results[0].plot()
+            _, buffer = cv2.imencode('.jpg', im_bgr)
+            plotted_image_b64 = base64.b64encode(buffer).decode('utf-8')
                         
         if not has_damage:
              return {
@@ -194,7 +201,8 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
             "vlm_reasoning": vlm_mock_text,
             "estimated_cost_lkr": cost,
             "repair_action": repair,
-            "sides_affected": ["Front", "Left side"] # Static for demo, could map from YOLO boxes
+            "sides_affected": ["Front", "Left side"], # Static for demo, could map from YOLO boxes
+            "image_base64": plotted_image_b64
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
