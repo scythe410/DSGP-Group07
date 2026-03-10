@@ -20,6 +20,71 @@ sys.path.append(os.path.join(ROOT_DIR, 'data', 'pipeline'))
 
 from predictor import predict_price
 
+import json
+
+# --- DEWLINI'S VLM PRICING MATRICES ---
+COST_TABLE = {
+    "scratch": {
+        "clear coat":  ("$50-$150",   "Rs. 15,000-45,000",   "Light polish or clear coat respray only."),
+        "paint level": ("$150-$400",  "Rs. 45,000-120,000",  "Colour coat respray required for affected panel."),
+        "deep":        ("$400-$900",  "Rs. 120,000-270,000", "Bare metal treatment, primer, full respray needed."),
+        "bare metal":  ("$400-$900",  "Rs. 120,000-270,000", "Bare metal treatment, primer, full respray needed."),
+    },
+    "dent": {
+        "paintless":   ("$75-$200",   "Rs. 22,000-60,000",   "PDR applicable — no paint damage, smooth dent."),
+        "traditional": ("$200-$600",  "Rs. 60,000-180,000",  "Filler, sanding and respray required."),
+        "severe":      ("$600-$2000", "Rs. 180,000-600,000", "Panel replacement or major bodywork likely needed."),
+        "creasing":    ("$600-$2000", "Rs. 180,000-600,000", "Panel replacement or major bodywork likely needed."),
+    }
+}
+
+PART_MULTIPLIERS = {
+    "hood": 1.4, "bonnet": 1.4, "door": 1.2, "bumper": 1.0,
+    "fender": 1.3, "quarter": 1.5, "roof": 1.6, "trunk": 1.2, "boot": 1.2,
+}
+
+def get_cost_estimate(damage_type, detail, car_part):
+    cost_usd = None
+    cost_lkr = None
+    repair_note = None
+    category = "scratch" if "scratch" in damage_type else "dent" if "dent" in damage_type else None
+
+    if category:
+        for key in COST_TABLE[category]:
+            if key in detail:
+                cost_usd, cost_lkr, repair_note = COST_TABLE[category][key]
+                break
+        if not cost_usd:
+            default = "paint level" if category == "scratch" else "traditional"
+            cost_usd, cost_lkr, repair_note = COST_TABLE[category][default]
+    else:
+        cost_usd = "$100-$500"
+        cost_lkr = "Rs. 30,000-150,000"
+        repair_note = "Mixed damage — professional assessment recommended."
+
+    part_note = ""
+    for part, mult in PART_MULTIPLIERS.items():
+        if part in car_part:
+            if mult >= 1.4:
+                part_note = f" Note: {car_part.title()} is a complex panel — costs may be on the higher end."
+            break
+
+    return cost_usd, cost_lkr, repair_note, part_note
+
+def build_summary(car_part, paint_finish, damage_type, detail, cost_usd, cost_lkr, repair_note, part_note):
+    summary = f"Damage identified on the {car_part.title()}. Paint finish appears to be {paint_finish}. "
+    if "scratch" in damage_type:
+        summary += f"Scratch classified as: {detail}. "
+    elif "dent" in damage_type:
+        summary += f"Dent classified as: {detail}. "
+    else:
+        summary += f"Damage detail: {detail}. "
+
+    summary += f"Recommended repair: {repair_note} Estimated cost: {cost_usd} / {cost_lkr}."
+    if part_note:
+        summary += part_note
+    return summary
+
 app = FastAPI(title="DSGP-Group07 Prediction Backend API")
 
 # Allow Frontend to talk to this Backend
@@ -82,10 +147,10 @@ def predict_car_value(specs: CarSpecRequest):
     if prediction_model is None or preprocessing_pipeline is None:
         raise HTTPException(status_code=500, detail="Models are not loaded.")
 
-    # 1. Anomaly Checking (Ramiru's Pipeline Integration)
-    # TODO: Connect Ramiru's One-Class SVM here to block garbage data before predicting
+    # 1. Anomaly Checking (Pipeline Integration)
+    # TODO: Connect One-Class SVM here to block garbage data before predicting
 
-    # 2. Format data for Osanda's XGBoost Predictor
+    # 2. Format data for XGBoost Predictor
     option_count = sum([specs.Has_AC, specs.Has_PowerSteering, specs.Has_PowerMirror, specs.Has_PowerWindow])
     
     input_data = {
@@ -124,8 +189,8 @@ def predict_car_value(specs: CarSpecRequest):
 async def analyze_damage_chain(file: UploadFile = File(...)):
     """
     1. Receives image from Frontend
-    2. Runs Dewlini's YOLO Model
-    3. Chains output to Savindi's VLM Logic (w/ local RAM safety)
+    2. Runs YOLO
+    3. Chains output to VLM Logic (w/ local RAM safety)
     """
     if yolo_damage_model is None:
         raise HTTPException(status_code=500, detail="YOLO Model not loaded.")
@@ -205,14 +270,38 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
                 # Ensure the model is available. 
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # We need to construct a PIL image from the base64 string to feed into gemini
+                # Construct a PIL image from the base64 string to feed into gemini
                 image_data = base64.b64decode(plotted_image_b64)
                 pil_img = Image.open(io.BytesIO(image_data))
                 
-                vlm_prompt = f"You are a sophisticated automotive damage assessor VLM. Look at the provided image with YOLO bounding boxes. We have mathematically calculated a base repair cost of LKR {cost} requiring '{repair}'. Do you agree with this assessment? If so, why? Provide a 2-3 sentence technical diagnostic reasoning explaining the severity of the damage visible in the colored boxes to the user."
+                vlm_prompt = f"""Analyze the damage inside the YOLO bounding boxes in the image.
+You must assess 4 specific criteria. Return ONLY a valid JSON object with the following keys, and NO markdown code blocks:
+{{
+  "car_part": "What specific car part is damaged? (e.g., hood, door, bumper, fender)",
+  "paint_finish": "Is it standard, metallic, pearl, or matte?",
+  "damage_type": "Is it primarily a scratch or a dent?",
+  "detail": "If scratch, choose: clear coat, paint level, deep, bare metal. If dent, choose: paintless, traditional, severe, creasing"
+}}"""
                 
                 response = model.generate_content([vlm_prompt, pil_img])
-                vlm_reasoning_text = response.text
+                # Parse Gemini's JSON Output
+                raw_text = response.text.replace("```json", "").replace("```", "").strip()
+                extracted_data = json.loads(raw_text)
+                
+                # Extract specifics
+                car_part = extracted_data.get("car_part", "unknown part")
+                paint_finish = extracted_data.get("paint_finish", "standard")
+                dmg_type = extracted_data.get("damage_type", "scratch").lower()
+                dtl = extracted_data.get("detail", "paint level").lower()
+                
+                # Pass into Dewlini's logical matrices
+                cost_usd, cost_lkr, repair_note, part_note = get_cost_estimate(dmg_type, dtl, car_part)
+                summary_text = build_summary(car_part, paint_finish, dmg_type, dtl, cost_usd, cost_lkr, repair_note, part_note)
+                
+                # Update frontend output payload
+                vlm_reasoning_text = summary_text
+                cost = cost_lkr  # Now passing the exact bracket string instead of mathematical int
+                repair = repair_note
             except Exception as e:
                 print(f"[ERROR] Gemini VLM logic failed, falling back to heuristic: {e}")
         

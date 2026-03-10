@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (damageHeader) damageHeader.style.display = 'none';
             processingState.style.display = 'block';
 
-            processingText.innerHTML = "<strong>Step 1/2</strong><br><br>Dewlini's YOLO Model detecting damage bounding boxes...";
+            processingText.innerHTML = "<strong>Step 1/2</strong><br><br>Assesing your car...";
 
             const formData = new FormData();
             formData.append('file', file);
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            processingText.innerHTML = "<strong>Step 2/2</strong><br><br>Passing YOLO output to Savindi's VLM for severity and cost reasoning...";
+            processingText.innerHTML = "<strong>Step 2/2</strong><br><br>Cost reasoning...";
 
             const data = await response.json();
 
@@ -73,7 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const costContainer = document.querySelector('.card-section-value');
                     if (costContainer) {
-                        costContainer.innerHTML = `LKR ${data.estimated_cost_lkr.toLocaleString()} <span class="info-icon" style="margin-left: 8px; display: inline-flex; width: 18px; height: 18px; border: 1.5px solid #ccc; border-radius: 50%; align-items: center; justify-content: center; font-size: 12px; color: #ccc; cursor: help;">ⓘ</span>`;
+                        const costVal = typeof data.estimated_cost_lkr === 'number' 
+                            ? `LKR ${data.estimated_cost_lkr.toLocaleString()}` 
+                            : data.estimated_cost_lkr;
+                        costContainer.innerHTML = `${costVal} <span class="info-icon" style="margin-left: 8px; display: inline-flex; width: 18px; height: 18px; border: 1.5px solid #ccc; border-radius: 50%; align-items: center; justify-content: center; font-size: 12px; color: #ccc; cursor: help;">ⓘ</span>`;
                     }
 
                     const groupsContainer = document.querySelector('.damage-groups');
@@ -90,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const parent = el.parentElement;
                             if (parent) {
                                 parent.innerHTML = `
-                                    <strong style="color: #000; display: block; margin-bottom: 5px;">VLM Diagnostic Reasoning:</strong>
+                                    <strong style="color: #000; display: block; margin-bottom: 5px;">Diagnostic Reasoning:</strong>
                                     <em>${data.vlm_reasoning}</em>
                                 `;
                             }
@@ -120,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const parent = el.parentElement;
                             if (parent) {
                                 parent.innerHTML = `
-                                     <strong style="color: #000; display: block; margin-bottom: 5px;">VLM Diagnostic Reasoning:</strong>
+                                     <strong style="color: #000; display: block; margin-bottom: 5px;">Diagnostic Reasoning:</strong>
                                      <em>${data.message} No bounding boxes were passed from the YOLO model.</em>
                                  `;
                             }
