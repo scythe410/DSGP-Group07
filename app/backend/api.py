@@ -274,12 +274,13 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
                 image_data = base64.b64decode(plotted_image_b64)
                 pil_img = Image.open(io.BytesIO(image_data))
                 
-                vlm_prompt = f"""Analyze the damage inside the YOLO bounding boxes in the image.
-You must assess 4 specific criteria. Return ONLY a valid JSON object with the following keys, and NO markdown code blocks:
+                vlm_prompt = f"""Analyze the provided car image for damage. While YOLO bounding boxes might be drawn on the image, DO NOT restrict your analysis to only those boxes. You must assess the overall severity of the vehicle's damage, finding the most severe damage visible (such as large dents, structural deformation, or major cracks on the bumper) even if it has not been boxed by YOLO.
+
+You must assess 4 specific criteria based on the most severe damage visible. Return ONLY a valid JSON object with the following keys, and NO markdown code blocks:
 {{
-  "car_part": "What specific car part is damaged? (e.g., hood, door, bumper, fender)",
+  "car_part": "What specific car part contains the most severe damage? (e.g., hood, door, bumper, fender)",
   "paint_finish": "Is it standard, metallic, pearl, or matte?",
-  "damage_type": "Is it primarily a scratch or a dent?",
+  "damage_type": "Is it primarily a scratch or a dent? (Prioritize dents/structural damage over minor scratches)",
   "detail": "If scratch, choose: clear coat, paint level, deep, bare metal. If dent, choose: paintless, traditional, severe, creasing"
 }}"""
                 
