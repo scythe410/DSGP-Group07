@@ -135,7 +135,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents)).convert("RGB")
         
         # Step 1: YOLO Detection (In memory to avoid Live Server refresh loops)
-        results = yolo_damage_model.predict(image)
+        results = yolo_damage_model.predict(image, conf=0.1)
         
         detected_groups = []
         has_damage = False
@@ -172,8 +172,6 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         dent_area = 0
-        repair = "Inspection required"
-        cost = 0
         
         if contours:
             largest = max(contours, key=cv2.contourArea)
@@ -182,25 +180,47 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
             
             if dent_area < 5000:
                 dent_type = "Small Dent"
-                repair = "Paintless Dent Repair"
-                cost = 5000
-            elif dent_area < 15000:
-                dent_type = "Medium Dent"
-                repair = "Panel Beating"
-                cost = 12000
-            else:
-                dent_type = "Severe Structure Damage"
-                repair = "Panel Replacement + Repaint"
-                cost = 35000
+            # Mock VLM / Real VLM Logic Extraction
+        vlm_reasoning_text = ""
+        cost = 0
+        repair = "None required"
+        
+        if "dent" in detected_groups or "severe-dent" in detected_groups:
+             cost += 25000
+             repair = "Panel pull and repaint"
+        if "scratch" in detected_groups:
+             cost += 5000
+             repair = "Buff / Polish / Spot repaint"
+             
+        # Mock VLM heuristic reasoning (Fallback)
+        vlm_mock_text = f"Based on the YOLO bounding boxes provided, the vehicle shows visible damage ({', '.join(detected_groups)}). The estimated market repair cost in Sri Lanka leans towards an action of '{repair}' costing LKR {cost:,} via local suppliers."
+        vlm_reasoning_text = vlm_mock_text
+
+        # Attempt REAL Gemini VLM inference if API key exists
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_key and plotted_image_b64:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                # Ensure the model is available. 
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
-        # Simulate VLM Text Generation (to prevent 15GB RAM crash locally)
-        vlm_mock_text = f"Based on the bounding boxes provided, the vehicle shows distinct damage ({', '.join(detected_groups)}). Structural integrity assessment suggests {dent_area:,}px affected area. The estimated market repair cost in Sri Lanka leans towards '{repair}' via local suppliers."
+                # We need to construct a PIL image from the base64 string to feed into gemini
+                image_data = base64.b64decode(plotted_image_b64)
+                pil_img = Image.open(io.BytesIO(image_data))
+                
+                vlm_prompt = f"You are a sophisticated automotive damage assessor VLM. Look at the provided image with YOLO bounding boxes. We have mathematically calculated a base repair cost of LKR {cost} requiring '{repair}'. Do you agree with this assessment? If so, why? Provide a 2-3 sentence technical diagnostic reasoning explaining the severity of the damage visible in the colored boxes to the user."
+                
+                response = model.generate_content([vlm_prompt, pil_img])
+                vlm_reasoning_text = response.text
+            except Exception as e:
+                print(f"[ERROR] Gemini VLM logic failed, falling back to heuristic: {e}")
         
         return {
             "status": "success",
             "has_damage": True,
             "detected_groups": detected_groups,
-            "vlm_reasoning": vlm_mock_text,
+            "vlm_reasoning": vlm_reasoning_text,
             "estimated_cost_lkr": cost,
             "repair_action": repair,
             "sides_affected": ["Front", "Left side"], # Static for demo, could map from YOLO boxes

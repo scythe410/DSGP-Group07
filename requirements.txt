@@ -20,3 +20,4 @@ uvicorn
 python-multipart
 huggingface-hub
 lightgbm
+google-generativeai
