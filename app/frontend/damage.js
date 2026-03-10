@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (damageHeader) damageHeader.style.display = 'none';
             processingState.style.display = 'block';
 
-            processingText.innerHTML = "<strong>Step 1/2</strong><br><br>Assesing your car...";
+            processingText.innerHTML = "<strong>Step 1/2</strong><br><br>Assessing your car...";
 
             const formData = new FormData();
             formData.append('file', file);
@@ -76,14 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const costVal = typeof data.estimated_cost_lkr === 'number' 
                             ? `LKR ${data.estimated_cost_lkr.toLocaleString()}` 
                             : data.estimated_cost_lkr;
-                        costContainer.innerHTML = `${costVal} <span class="info-icon" style="margin-left: 8px; display: inline-flex; width: 18px; height: 18px; border: 1.5px solid #ccc; border-radius: 50%; align-items: center; justify-content: center; font-size: 12px; color: #ccc; cursor: help;">ⓘ</span>`;
+                        costContainer.innerHTML = `${costVal}`;
                     }
 
                     const groupsContainer = document.querySelector('.damage-groups');
                     if (groupsContainer) {
                         groupsContainer.innerHTML = `
-                            <div class="card-section-label" style="font-size: 12px; color: #999; margin-bottom: 12px; font-weight: 500;">Damage Groups Detected (YOLO)</div>
-                            ${data.detected_groups.map(g => `<div class="damage-group-item" style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 8px;">${g}</div>`).join('')}
+                            <div class="card-section-label" style="font-size: 12px; color: #999; margin-bottom: 12px; font-weight: 500;">Damage Groups Detected</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${data.detected_groups.map(g => `<span class="damage-group-item" style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #111; display: inline-block;">${g}</span>`).join('')}
+                            </div>
                         `;
                     }
 
@@ -112,8 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const groupsContainer = document.querySelector('.damage-groups');
                     if (groupsContainer) {
                         groupsContainer.innerHTML = `
-                             <div class="card-section-label" style="font-size: 12px; color: #999; margin-bottom: 12px; font-weight: 500;">Damage Groups Detected (YOLO)</div>
-                             <div class="damage-group-item" style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 8px;">System Cleared</div>
+                             <div class="card-section-label" style="font-size: 12px; color: #999; margin-bottom: 12px; font-weight: 500;">Damage Groups Detected</div>
+                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                 <span class="damage-group-item" style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #111; display: inline-block;">System Cleared</span>
+                             </div>
                          `;
                     }
 
