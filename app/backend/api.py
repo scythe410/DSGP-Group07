@@ -268,7 +268,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_key)
                 # Ensure the model is available. 
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 # Construct a PIL image from the base64 string to feed into gemini
                 image_data = base64.b64decode(plotted_image_b64)
