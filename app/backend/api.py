@@ -319,6 +319,18 @@ You must assess 4 specific criteria. Return ONLY a valid JSON object with the fo
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/models")
+def list_gemini_models():
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
+        return {"error": "GEMINI_API_KEY not set"}
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_key)
+        return {"models": [m.name for m in genai.list_models()]}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/health")
 def health_check():
     return {
