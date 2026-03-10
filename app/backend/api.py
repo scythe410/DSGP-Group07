@@ -304,6 +304,7 @@ You must assess 4 specific criteria. Return ONLY a valid JSON object with the fo
                 repair = repair_note
             except Exception as e:
                 print(f"[ERROR] Gemini VLM logic failed, falling back to heuristic: {e}")
+                vlm_reasoning_text = f"[ERROR: {type(e).__name__} - {str(e)}] {vlm_reasoning_text}"
         
         return {
             "status": "success",
