@@ -49,10 +49,13 @@
                 <h1 style="font-size: 40px; font-weight: 800; margin-bottom: 50px;">Damage records</h1>
             </div>
 
-            <!-- Car Diagram Section -->
-            <div class="car-diagram-section">
-                <div class="car-diagram-wrapper">
-                    <div class="car-image">
+            <!-- Detailed Results Flex Container -->
+            <div style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; margin-bottom: 40px; max-width: 1400px; margin-left: auto; margin-right: auto;">
+                
+                <!-- Left Side: Image -->
+                <div class="car-diagram-section" style="flex: 1 1 600px; max-width: 800px; width: 100%;">
+                    <div class="car-diagram-wrapper">
+                        <div class="car-image">
                         <img id="result-image" src="" style="width: 100%; border-radius: 12px; object-fit: cover;"
                             alt="Processed Image" />
 
@@ -69,15 +72,12 @@
                         </div>
                     </div>
                 </div>
-            </div>
+                </div>
 
-            <!-- Cards Section (Cloned strictly from user's file) -->
-            <div
-                style="display: flex; gap: 20px; justify-content: center; align-items: flex-start; flex-wrap: wrap; margin-bottom: 40px;">
-
-                <!-- Center Card (Featured) -->
-                <div class="assessment-card center-card"
-                    style="flex: 0 1 300px; width: 100%; max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; border: 2px solid #000; position: relative;">
+                <!-- Right Side: Assessment Card -->
+                <div style="flex: 1 1 400px; max-width: 500px; width: 100%;">
+                    <div class="assessment-card center-card"
+                        style="width: 100%; background: white; border-radius: 12px; padding: 30px; border: 2px solid #000; position: relative; margin-top: 0;">
 
 
                     <div class="card-title"
@@ -135,9 +135,10 @@
                     </div>
 
 
-                </div>
+                    </div> <!-- Closing assessment-card -->
+                </div> <!-- Closing Right Side column -->
 
-            </div>
+            </div> <!-- Closing Flex Container -->
 
             <div style="text-align: center; margin-top: 20px; margin-bottom: 60px;">
                 <button class="btn btn-primary" onclick="location.reload()"
