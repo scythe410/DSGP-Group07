@@ -185,10 +185,10 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         cost = 0
         repair = "None required"
         
-        if "dent" in detected_groups or "severe-dent" in detected_groups:
+        if any(d in detected_groups for d in ["dent", "severe-dent", "dents"]):
              cost += 25000
              repair = "Panel pull and repaint"
-        if "scratch" in detected_groups:
+        if any("scratch" in d.lower() for d in detected_groups):
              cost += 5000
              repair = "Buff / Polish / Spot repaint"
              
