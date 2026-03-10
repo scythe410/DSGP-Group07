@@ -50,10 +50,11 @@ class CarSpecRequest(BaseModel):
 prediction_model = None
 preprocessing_pipeline = None
 yolo_damage_model = None
+xgboost_load_error = None
 
 @app.on_event("startup")
 def load_models():
-    global prediction_model, preprocessing_pipeline, yolo_damage_model
+    global prediction_model, preprocessing_pipeline, yolo_damage_model, xgboost_load_error
     try:
         print("[INFO] Downloading XGBoost models from Hugging Face Hub...")
         model_path = hf_hub_download(repo_id="scythe410/sri-lankan-vehicle-price-prediction", filename="best_optimized_model.pkl")
@@ -65,6 +66,7 @@ def load_models():
             preprocessing_pipeline = pickle.load(f)
         print("[INFO] XGBoost Price Model loaded seamlessly.")
     except Exception as e:
+        xgboost_load_error = str(e)
         print(f"[ERROR] Could not load XGBoost model: {e}")
         
     try:
@@ -209,7 +211,11 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "Backend API is humming nicely"}
+    return {
+        "status": "ok", 
+        "message": "Backend API is humming nicely",
+        "xgboost_load_error": xgboost_load_error
+    }
 
 if __name__ == "__main__":
     import uvicorn
