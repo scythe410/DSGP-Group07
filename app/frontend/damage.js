@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         groupsContainer.innerHTML = `
                             <div class="card-section-label" style="font-size: 12px; color: #999; margin-bottom: 12px; font-weight: 500;">Damage Groups Detected</div>
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                ${data.detected_groups.map(g => `<span class="damage-group-item" style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #111; display: inline-block;">${g}</span>`).join('')}
+                                ${data.detected_groups.map(g => `<span class="damage-group-item" style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #111; display: inline-block; text-transform: capitalize;">${g}</span>`).join('')}
                             </div>
                         `;
                     }
