@@ -136,14 +136,22 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
         results = yolo_damage_model.predict(image)
         
         detected_groups = []
+        detailed_detections = []
         has_damage = False
         for r in results:
             if len(r.boxes) > 0:
                 has_damage = True
-                for cls_id in r.boxes.cls:
+                for box, conf, cls_id in zip(r.boxes.xyxy, r.boxes.conf, r.boxes.cls):
                     class_name = yolo_damage_model.names[int(cls_id)]
+                    score = float(conf)
+                    # Use a set-like approach for detected groups
                     if class_name not in detected_groups:
                         detected_groups.append(class_name)
+                    detailed_detections.append({
+                        "class": class_name,
+                        "confidence": score,
+                        "box": [float(x) for x in box]
+                    })
                         
         # Render the annotated image with bounding boxes
         plotted_img_array = results[0].plot()
@@ -207,7 +215,8 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
             "vlm_reasoning": vlm_mock_text,
             "estimated_cost_lkr": cost,
             "repair_action": repair,
-            "sides_affected": ["Front", "Left side"] # Static for demo, could map from YOLO boxes
+            "sides_affected": ["Front", "Left side"], # Static for demo, could map from YOLO boxes
+            "detections": detailed_detections
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -127,8 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
             Has_PowerWindow: document.getElementById('power-window').checked
         };
 
-        // Targeting live Hugging Face backend for unified results
-        const URL_BASE = 'https://scythe410-dsgp-007.hf.space'; 
+        // Targeting local backend since the detailed YOLO API export exists directly on the `develop` loop.
+        const URL_BASE = 'http://127.0.0.1:8000'; 
 
         try {
             // Objective 1: Market Prediction (Fast)
@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fd.append('file', file);
                 return fetch(`${URL_BASE}/analyze_damage`, { method: 'POST', body: fd})
                         .then(r => r.json())
-                        .catch(() => ({has_damage: true, message: "Server connection failed.", cost: Math.floor(Math.random() * 20000) + 10000, dent_type: "Identified Imperfection", vlm_mock_text: "(Backend connection fallback) This area requires professional evaluation."}));
+                        .catch(() => ({has_damage: true, message: "Server connection failed.", estimated_cost_lkr: Math.floor(Math.random() * 20000) + 10000, repair_action: "Identified Imperfection", vlm_reasoning: "(Backend connection fallback) This area requires professional evaluation.", detections: []}));
             });
 
             // Await ALL asynchronous compute blocks
@@ -182,16 +182,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if(res.has_damage) {
                     hits++;
-                    const itemCost = res.cost || Math.floor(Math.random() * 20000) + 5000;
+                    const itemCost = res.estimated_cost_lkr || res.cost || Math.floor(Math.random() * 20000) + 5000;
                     totalEst += itemCost; 
+                    
+                    let detectionText = "";
+                    if (res.detections && res.detections.length > 0) {
+                        const uniqueDetections = res.detections.map(d => `${d.class} ${(d.confidence * 100).toFixed(1)}%`).join(" | ");
+                        detectionText = `<div style="font-size:12px; margin-top: 6px; padding:4px 8px; background:#E0EBFF; color:var(--primary-blue); border-radius:4px; display:inline-block;">YOLO Match: ${uniqueDetections}</div>`;
+                    }
                     
                     const card = document.createElement('div');
                     card.className = 'damage-item';
                     card.innerHTML = `
-                        <img src="${res.image && res.image.startsWith('data:image') ? res.image : URL.createObjectURL(queuedFiles[index])}" class="damage-item-img">
+                        <div style="position:relative;">
+                            <img src="${res.image && res.image.startsWith('data:image') ? res.image : URL.createObjectURL(queuedFiles[index])}" class="damage-item-img" onclick="window.open(this.src)" style="cursor:zoom-in;">
+                            <ion-icon name="scan-outline" style="position:absolute; bottom:4px; left:4px; color:white; font-size:16px; drop-shadow:0 2px 2px rgba(0,0,0,0.5); pointer-events:none;"></ion-icon>
+                        </div>
                         <div style="flex:1;">
-                            <h4 style="margin-bottom:4px; font-weight:700; font-size:15px;">${res.dent_type || 'Surface Anomaly Detected'}</h4>
-                            <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">${res.vlm_mock_text || res.message || 'Inspection documented.'}</p>
+                            <h4 style="margin-bottom:4px; font-weight:700; font-size:15px;">${res.repair_action || res.dent_type || 'Surface Anomaly Detected'}</h4>
+                            <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">${res.vlm_reasoning || res.vlm_mock_text || res.message || 'Inspection documented.'}</p>
+                            ${detectionText}
                         </div>
                         <div style="font-weight:800; color:var(--primary-blue); font-size:15px; margin-top:2px;">
                             ${'Rs. '+itemCost.toLocaleString()}
