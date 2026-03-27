@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo(0, 0);
 
             // Dump basic spec payloads
-            document.getElementById('res-title').innerText = payload.Make;
+            document.getElementById('res-make').innerText = payload.Make;
             document.getElementById('res-model').innerText = payload.Model;
             document.getElementById('res-subtitle').innerText = `${payload.YOM} - Certified Pre-Purchase Report`;
             document.getElementById('res-mileage').innerText = payload.Mileage_km.toLocaleString();
