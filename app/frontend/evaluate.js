@@ -127,9 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
             Has_PowerWindow: document.getElementById('power-window').checked
         };
 
-        // Targeting local backend since DevOps branch testing runs locally first.
-        // Fallback to HF model if local fails is handled gracefully.
-        const URL_BASE = 'http://127.0.0.1:8000'; 
+        // Targeting live Hugging Face backend for unified results
+        const URL_BASE = 'https://scythe410-dsgp-007.hf.space'; 
 
         try {
             // Objective 1: Market Prediction (Fast)
