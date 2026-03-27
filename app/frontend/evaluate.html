@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pre-Purchase Check - System</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+<body style="background-color: var(--bg-color);">
+    <!-- Header -->
+    <header class="app-header">
+        <a href="index.html" class="icon-btn" style="text-decoration:none;"><ion-icon name="chevron-back-outline"></ion-icon></a>
+        <div class="user-actions">
+            <button class="icon-btn"><ion-icon name="menu-outline"></ion-icon></button>
+            <div class="avatar">
+                <ion-icon name="person-circle-outline"></ion-icon>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mobile-container">
+        <h1 class="title">Pre-Purchase Check</h1>
+        <p class="subtitle" style="margin-bottom:32px;">Trusted vehicle condition report</p>
+
+        <!-- STATE 1: Input Form -->
+        <div id="setup-state">
+            <div class="search-bar">
+                <ion-icon name="search-outline"></ion-icon>
+                <input type="text" id="make" list="make-list" placeholder="Start typing the Vehicle Make..." required>
+                <datalist id="make-list"></datalist>
+                <ion-icon name="close-outline"></ion-icon>
+            </div>
+            
+            <div class="form-grid" style="margin-top: 24px;">
+                <div class="form-group" id="model-wrapper">
+                    <label class="form-label">Model</label>
+                    <input type="text" id="model" class="form-control" list="model-list" placeholder="Vehicle Model" required disabled>
+                    <datalist id="model-list"></datalist>
+                    <div id="model-warning" style="display: none; color: #FF0055; font-size: 13px; margin-top: 5px;">Wait! Please select make first</div>
+                </div>
+                <!-- Other Specs -->
+                <div class="form-group"><label>Year</label><input type="number" id="yom" class="form-control" value="2018"></div>
+                <div class="form-group"><label>Mileage (km)</label><input type="number" id="mileage" class="form-control" value="50000"></div>
+                <div class="form-group"><label>Engine (cc)</label><input type="number" id="engine" class="form-control" value="1500"></div>
+                
+                <div class="form-group"><label>Fuel</label><select id="fuel" class="form-control"><option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option></select></div>
+                <div class="form-group"><label>Gear</label><select id="gear" class="form-control"><option>Automatic</option><option>Manual</option><option>CVT</option></select></div>
+                <div class="form-group"><label>Condition</label><select id="condition" class="form-control"><option>Used</option><option>Unregistered</option></select></div>
+            </div>
+
+            <!-- Options Toggles -->
+            <div class="form-grid" style="margin-top:24px;">
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="ac" checked> AC</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="power-steering" checked> Power Steering</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="power-mirror" checked> Power Mirror</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="power-window" checked> Power Window</label>
+            </div>
+
+            <!-- Multi Photo Upload -->
+            <div class="upload-box" id="multi-upload-box" style="margin-top: 32px;">
+                <input type="file" id="car-images" multiple accept="image/*" style="display: none;">
+                <ion-icon name="camera-outline" class="upload-icon"></ion-icon>
+                <p style="color:var(--text-muted); font-weight:500;">Click or drag exact photos of the vehicle (exterior/damages)</p>
+                <div id="image-preview-container" class="preview-grid"></div>
+            </div>
+
+            <button id="evaluate-btn" class="btn btn-primary" style="width: 100%; margin-top: 32px; font-size: 18px;">
+                Evaluate Vehicle <span id="spinner" style="display:none; margin-left:10px;"><ion-icon name="sync-outline" class="spin"></ion-icon></span>
+            </button>
+        </div>
+
+        <!-- STATE 2: Results Dashboard (Mimicking Mockup perfectly) -->
+        <div id="results-state" style="display: none; padding-bottom: 120px;">
+            <!-- Main Car Card -->
+            <div class="car-hero-card">
+                <div class="car-header">
+                    <h2 id="res-title" style="font-size:24px; font-weight:800;">Porsche 911 <span style="font-weight: 500; font-size: 18px;" id="res-model">Turbo S</span></h2>
+                    <p id="res-subtitle" style="color:var(--text-muted); font-weight:500;">2025- Sport Edition</p>
+                    <button class="icon-btn-dark" style="margin-left:auto;"><ion-icon name="arrow-forward-outline"></ion-icon></button>
+                </div>
+                
+                <div class="car-image-container">
+                    <img id="res-main-img" src="dummy.jpg" alt="Car">
+                    
+                    <div class="value-badge glass-panel">
+                        <span style="font-size: 13px; font-weight:600; color: var(--text-muted);">Estimated Value</span>
+                        <div id="res-price" style="font-size: 24px; font-weight: 800; color:var(--text-main);">LKR 0.00</div>
+                    </div>
+                </div>
+                
+                <div class="specs-pills">
+                     <span class="spec-pill"><ion-icon name="speedometer-outline" style="font-size:18px; color:var(--text-muted);"></ion-icon> <span id="res-mileage">189.00</span> km</span>
+                     <span class="spec-pill"><ion-icon name="people-outline" style="font-size:18px; color:var(--text-muted);"></ion-icon> <span id="res-condition">Used</span></span>
+                     <span class="spec-pill"><ion-icon name="cube-outline" style="font-size:18px; color:var(--text-muted);"></ion-icon> <span id="res-engine">1500cc</span></span>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" style="flex: 1; padding:16px;" onclick="location.reload()">Reset</button>
+                    <button class="btn btn-primary" style="flex: 1; padding:16px;">Buy / Report</button>
+                </div>
+            </div>
+
+            <!-- Analysis Blocks matched to Mockup 3 -->
+            <div class="analysis-stats" style="margin-top: 24px;">
+                <div class="stat-box" style="padding:16px;">
+                    <h3 id="res-damage-count">0</h3>
+                    <p>Alerts</p>
+                </div>
+                <div class="stat-box" style="padding:16px;">
+                    <h3 id="res-repair-cost" style="font-size:22px;">LKR 0</h3>
+                    <p>Est. Repair Cost</p>
+                </div>
+            </div>
+
+            <div class="details-card" style="margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="font-size:20px; font-weight:800;">Fixes Required</h3>
+                        <p class="subtitle">All identified damage documented</p>
+                    </div>
+                    <button class="icon-btn-dark"><ion-icon name="arrow-forward-outline"></ion-icon></button>
+                </div>
+                
+                <div id="damage-list-container" style="margin-top: 20px;">
+                    <!-- Javascript populates damage blocks here -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Floating Side Menu -->
+        <div class="floating-menu glass-panel" id="floating-menu" style="display: none;">
+            <button class="menu-btn"><ion-icon name="heart-outline"></ion-icon></button>
+            <button class="menu-btn active"><ion-icon name="color-wand-outline"></ion-icon></button>
+            <button class="menu-btn"><ion-icon name="document-text-outline"></ion-icon></button>
+            <button class="menu-btn"><ion-icon name="chatbubble-ellipses-outline"></ion-icon></button>
+            <button class="menu-btn"><ion-icon name="settings-outline"></ion-icon></button>
+        </div>
+    </div>
+    
+    <script src="evaluate.js"></script>
+</body>
+</html>
