@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let vehicleMapping = {};
 
     if (makeInput && modelInput) {
-        // Fallback to HF Space for dropdown lists
-        fetch('https://scythe410-dsgp-007.hf.space/vehicle_options')
+        // Fallback to local server for options since we are in dev 
+        fetch('http://127.0.0.1:8000/vehicle_options')
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {

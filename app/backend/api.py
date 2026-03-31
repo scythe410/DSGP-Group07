@@ -75,6 +75,23 @@ def load_models():
     except Exception as e:
         print(f"[ERROR] Could not load YOLO model: {e}")
 
+@app.get("/vehicle_options")
+def get_vehicle_options():
+    csv_path = os.path.join(ROOT_DIR, "data", "initial-cleaning", "cleaned_no_outliers.csv")
+    if not os.path.exists(csv_path):
+        raise HTTPException(status_code=500, detail="Vehicle dataset not found.")
+        
+    try:
+        df = pd.read_csv(csv_path)
+        make_model_mapping = (
+            df.groupby('Make')['Model']
+            .apply(lambda x: sorted(list(set(x))))
+            .to_dict()
+        )
+        return {"status": "success", "options": make_model_mapping}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/predict_price")
 def predict_car_value(specs: CarSpecRequest):
     if prediction_model is None or preprocessing_pipeline is None:
