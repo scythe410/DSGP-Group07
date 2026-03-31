@@ -14,3 +14,7 @@ datasets/
 
 # Machine dependent information
 .idea/
+
+rename_imgs.py
+
+/best_model
