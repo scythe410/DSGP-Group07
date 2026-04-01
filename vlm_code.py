@@ -1,4 +1,13 @@
+# =============================================================================
+# ⚠️  COLAB RESEARCH NOTEBOOK — DO NOT RUN AS A STANDALONE PYTHON SCRIPT
+# This file contains Google Colab-specific magic commands (!pip) and imports
+# (google.colab.drive, google.colab.files) that will CRASH in any normal
+# Python environment. It is kept here as a reference for the original VLM
+# and OpenCV heuristic logic. The production implementation lives in api.py.
+# =============================================================================
+
 !pip install -q transformers accelerate torch torchvision pillow
+
 
 
 import torch

@@ -6,3 +6,18 @@ data/processed/
 data/pipeline/*.csv
 data/testing/*.csv
 data/testing/*.log
+
+# Environment variables — NEVER commit API keys
+.env
+*.env
+.env.local
+.env.production
+
+# Model weight files — too large for Git, share via Google Drive
+*.pt
+*.pkl
+*.safetensors
+
+# IDE
+.idea/
+.vscode/

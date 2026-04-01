@@ -1,20 +1,36 @@
-streamlit
-pandas
+# Core Web API
+fastapi
+uvicorn[standard]
+python-multipart
+
+# ML / Computer Vision
+torch
+torchvision
+transformers
+ultralytics
+opencv-python-headless
+Pillow
 numpy
 scikit-learn
 xgboost
-selenium
-webdriver-manager
-ultralytics
-Pillow
-beautifulsoup4
 scipy
-requests
-chromadb
+
+# AI / LLM APIs
+google-generativeai
 openai
-python-dotenv
+chromadb
+
+# Data
+pandas
 matplotlib
 seaborn
-fastapi
-uvicorn
-python-multipart
+
+# Utilities
+python-dotenv
+requests
+beautifulsoup4
+selenium
+webdriver-manager
+
+# Dev & prototyping (not needed in production)
+streamlit

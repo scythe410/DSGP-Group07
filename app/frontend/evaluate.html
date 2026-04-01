@@ -78,7 +78,6 @@
                 <div class="car-header">
                     <h2 style="font-size:24px; font-weight:800;"><span id="res-make">Porsche 911</span> <span style="font-weight: 500; font-size: 18px;" id="res-model">Turbo S</span></h2>
                     <p id="res-subtitle" style="color:var(--text-muted); font-weight:500;">2025- Sport Edition</p>
-                    <button class="icon-btn-dark" style="margin-left:auto;"><ion-icon name="arrow-forward-outline"></ion-icon></button>
                 </div>
                 
                 <div class="car-image-container">
@@ -137,6 +136,23 @@
             <button class="menu-btn"><ion-icon name="document-text-outline"></ion-icon></button>
             <button class="menu-btn"><ion-icon name="chatbubble-ellipses-outline"></ion-icon></button>
             <button class="menu-btn"><ion-icon name="settings-outline"></ion-icon></button>
+        </div>
+    </div>
+
+    <!-- Custom Invalid Image Modal -->
+    <div id="invalid-image-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="car-hero-card" style="width: 90%; max-width: 400px; text-align: center; padding: 32px 24px; animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; align-items: center;">
+            <!-- Scrollable Grid Container for Invalid Images -->
+            <div id="invalid-images-grid" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; max-width: 100%; justify-content: center; min-height: 110px;">
+                <!-- JS dynamically generates and injects circular image nodes here -->
+            </div>
+            <h3 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">Invalid Upload(s)</h3>
+            <p id="invalid-image-text" style="color: var(--text-muted); font-size: 15px; margin-bottom: 24px;">Some of your photos do not appear to be vehicles.</p>
+            
+            <div style="display: flex; gap: 12px; width: 100%; flex-wrap: wrap;">
+                <button id="modal-btn-retry" class="btn btn-primary" style="flex: 1; padding: 14px; font-size:15px;">Try Again</button>
+                <button id="modal-btn-ignore" class="btn btn-secondary" style="flex: 1; padding: 14px; font-size:15px;">Ignore & Continue</button>
+            </div>
         </div>
     </div>
     
