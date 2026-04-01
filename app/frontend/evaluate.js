@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Constants
     // ---------------------------------------------------------------------------
 
-    const URL_BASE = 'http://127.0.0.1:8000';  // Switch to production URL when deploying
+    // Auto-detect environment: localhost = local dev, anything else = Vercel (production)
+    const URL_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://127.0.0.1:8000'
+        : 'https://scythe410-dsgp-007.hf.space';
 
     // ---------------------------------------------------------------------------
     // Vehicle Make/Model Dropdown

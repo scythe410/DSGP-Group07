@@ -7,6 +7,7 @@ python-multipart
 torch
 torchvision
 transformers
+accelerate
 ultralytics
 opencv-python-headless
 Pillow
@@ -15,22 +16,20 @@ scikit-learn
 xgboost
 scipy
 
-# AI / LLM APIs
+# AI / LLM
 google-generativeai
-openai
-chromadb
+
+# HuggingFace Hub — model download at startup in production
+huggingface_hub
 
 # Data
 pandas
-matplotlib
-seaborn
 
 # Utilities
 python-dotenv
 requests
+
+# Data pipeline (scraping — not needed for web app, but kept for local dev)
 beautifulsoup4
 selenium
 webdriver-manager
-
-# Dev & prototyping (not needed in production)
-streamlit

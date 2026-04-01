@@ -1,29 +1,37 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-# Create the user and set permissions for HuggingFace Space
-RUN useradd -m -u 1000 user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
-
-WORKDIR /code
-
-# Install system dependencies for OpenCV (required for YOLO cv2 operations)
+# System dependencies required by OpenCV and PyTorch
 RUN apt-get update && apt-get install -y \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt /code/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
-
-# Switch to the non-root user (HuggingFace constraint)
+# HuggingFace Spaces requires user with uid 1000
+RUN useradd -m -u 1000 user
 USER user
+
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1
+
 WORKDIR $HOME/app
 
-# Copy all project files into the container
-COPY --chown=user . $HOME/app
+# Install Python dependencies (done before copying code for layer caching)
+COPY --chown=user requirements.txt .
+RUN pip install --upgrade pip --no-cache-dir && \
+    pip install -r requirements.txt --no-cache-dir
+
+# Copy application code
+# Note: model weights (*.pt, *.pkl, *.safetensors) are gitignored and downloaded
+# at startup from HuggingFace Hub via _bootstrap_models() in api.py
+COPY --chown=user app/ ./app/
+COPY --chown=user price-model/ ./price-model/
+COPY --chown=user data/initial-cleaning/cleaned_no_outliers.csv ./data/initial-cleaning/cleaned_no_outliers.csv
+
+# Space secrets (GEMINI_API_KEY, HF_TOKEN) are injected as environment variables
+# by HuggingFace Spaces — no .env file needed in production
 
 EXPOSE 7860
 
-# Run the FastAPI server natively
-CMD ["uvicorn", "app.backend.api:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["python", "-m", "uvicorn", "app.backend.api:app", "--host", "0.0.0.0", "--port", "7860"]
