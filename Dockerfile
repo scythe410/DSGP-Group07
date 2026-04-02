@@ -34,4 +34,4 @@ COPY --chown=user data/initial-cleaning/cleaned_no_outliers.csv ./data/initial-c
 
 EXPOSE 7860
 
-CMD ["python", "-m", "uvicorn", "app.backend.api:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "python app/backend/bootstrap.py && python -m uvicorn app.backend.api:app --host 0.0.0.0 --port 7860"]
