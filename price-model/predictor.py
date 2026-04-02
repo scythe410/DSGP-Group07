@@ -2,7 +2,6 @@
 Prediction utilities
 """
 
-import streamlit as st
 import numpy as np
 import sys
 from pathlib import Path
@@ -48,7 +47,7 @@ def predict_price(input_features, model, preprocessing):
         return prediction, df_features
 
     except Exception as e:
-        st.error(f"Prediction error: {str(e)}")
+        print(f"Prediction error: {str(e)}")
         return None, None
 
 
