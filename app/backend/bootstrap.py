@@ -63,5 +63,19 @@ def bootstrap_models():
         )
         print("[BOOTSTRAP] XGBoost models ready.")
 
+    # Anomaly detection model (OneClassSVM) — guards both pipeline data quality
+    # and user input validation in the /predict_price endpoint
+    anomaly_path = os.path.join(ROOT_DIR, "price-model", "anomaly_model.pkl")
+    if not os.path.exists(anomaly_path):
+        print("[BOOTSTRAP] Downloading anomaly detection model from HF Hub...")
+        os.makedirs(os.path.dirname(anomaly_path), exist_ok=True)
+        hf_hub_download(
+            repo_id="scythe410/sri-lankan-vehicle-anomaly-detection",
+            filename="anomaly_model.pkl",
+            local_dir=os.path.dirname(anomaly_path),
+            token=hf_token,
+        )
+        print("[BOOTSTRAP] Anomaly model ready.")
+
 if __name__ == "__main__":
     bootstrap_models()

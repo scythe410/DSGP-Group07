@@ -172,19 +172,65 @@ def main():
         pickle.dump(preprocessing, f)
     logging.info(f"Saved preprocessing to {prep_path}")
     
-    # Update 'best' model pointers if R2 is good
     # Update 'latest' retrained model
     if r2 > 0.5:
         retrained_model_path = os.path.join(PRICE_MODEL_DIR, "retrained_model.pkl")
-        retrained_prep_path = os.path.join(PRICE_MODEL_DIR, "preprocessing_retrained.pkl")
-        
+        retrained_prep_path  = os.path.join(PRICE_MODEL_DIR, "preprocessing_retrained.pkl")
+
         with open(retrained_model_path, 'wb') as f:
             pickle.dump(model, f)
         with open(retrained_prep_path, 'wb') as f:
             pickle.dump(preprocessing, f)
-            
+
         logging.info(f"Saved retrained model to {retrained_model_path}")
-        logging.info("NOTE: This did NOT overwrite 'best_optimized_model.pkl' to preserve original work.")
+
+        # ── Push to HuggingFace Hub ──────────────────────────────────────────
+        hf_token = os.environ.get("HF_TOKEN")
+        if hf_token:
+            try:
+                from huggingface_hub import HfApi
+                api = HfApi(token=hf_token)
+                HF_REPO = "scythe410/sri-lankan-vehicle-price-prediction"
+
+                # Push model and preprocessing with a timestamped commit message
+                timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
+                api.upload_file(
+                    path_or_fileobj=retrained_model_path,
+                    path_in_repo="best_optimized_model.pkl",
+                    repo_id=HF_REPO,
+                    repo_type="model",
+                    commit_message=f"Auto-retrain: R²={r2:.4f}, MAE={mae:.0f} LKR ({timestamp_str})",
+                )
+                api.upload_file(
+                    path_or_fileobj=retrained_prep_path,
+                    path_in_repo="preprocessing_optimized.pkl",
+                    repo_id=HF_REPO,
+                    repo_type="model",
+                    commit_message=f"Auto-retrain preprocessing ({timestamp_str})",
+                )
+                logging.info(f"[HF] Pushed retrained model to {HF_REPO}")
+
+                # ── Restart HuggingFace Space so it loads the new model ──────────
+                HF_SPACE = "scythe410/dsgp-007"
+                try:
+                    import requests
+                    restart_url = f"https://huggingface.co/api/spaces/{HF_SPACE}/restart"
+                    resp = requests.post(restart_url,
+                                         headers={"Authorization": f"Bearer {hf_token}"},
+                                         timeout=30)
+                    if resp.status_code == 200:
+                        logging.info(f"[HF] Space '{HF_SPACE}' restart triggered — new model will load on startup.")
+                    else:
+                        logging.warning(f"[HF] Space restart returned HTTP {resp.status_code}: {resp.text[:200]}")
+                except Exception as e:
+                    logging.warning(f"[HF] Could not restart Space (non-fatal): {e}")
+
+            except Exception as e:
+                logging.error(f"[HF] Upload failed: {e}. Retrained model is saved locally only.")
+        else:
+            logging.warning("HF_TOKEN not set — skipping HuggingFace push. Model saved locally only.")
+    else:
+        logging.warning(f"R² = {r2:.4f} is below 0.5 — model NOT pushed to HuggingFace.")
 
 if __name__ == "__main__":
     main()

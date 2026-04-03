@@ -15,9 +15,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Configuration
 BASE_URL = "https://riyasewana.com/search/cars"
-# range small - ftesting
+# Demo: 4 pages (~220 listings, ~15 min). Full run: END_PAGE = 664 (~110k listings, ~6 hrs)
 START_PAGE = 1
-END_PAGE = 2
+END_PAGE = 4
 
 # Directory Setup
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

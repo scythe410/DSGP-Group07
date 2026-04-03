@@ -1,0 +1,86 @@
+name: Biweekly Data Pipeline — Scrape, Validate, Clean, Drift Check & Retrain
+
+on:
+  # Run at 02:00 UTC every other Monday (every ~2 weeks)
+  schedule:
+    - cron: '0 2 1,15 * *'
+
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      force_retrain:
+        description: 'Force retraining even if no drift is detected'
+        required: false
+        default: 'false'
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480   # 8 hrs max (full 664-page scrape ~6 hrs)
+
+    steps:
+      # ── 1. Checkout repository ────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python 3.10 (matches Dockerfile) ───────────────────────
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      # ── 3. Install Chrome + ChromeDriver for Selenium scraper ─────────────
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      # ── 4. Install Python dependencies ───────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          # Core pipeline dependencies (subset of requirements.txt)
+          pip install pandas scikit-learn xgboost scipy \
+                      selenium webdriver-manager beautifulsoup4 \
+                      huggingface_hub requests python-dotenv
+
+      # ── 5. Run the full pipeline ──────────────────────────────────────────
+      - name: Run scrape → validate → clean → drift → retrain pipeline
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FORCE_RETRAIN: ${{ github.event.inputs.force_retrain }}
+        run: |
+          echo "Starting pipeline at $(date)"
+          python data/pipeline/run_pipeline.py
+          echo "Pipeline finished at $(date)"
+
+      # ── 6. Upload pipeline logs and any output CSVs as artifacts ─────────
+      - name: Upload pipeline artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-run-${{ github.run_id }}
+          path: |
+            data/processed/*.csv
+            data/raw/quarantined_ads.csv
+            data/processed/drift_detected.flag
+          retention-days: 30
+
+      # ── 7. Report result in job summary ──────────────────────────────────
+      - name: Report pipeline summary
+        if: always()
+        run: |
+          echo "## Pipeline Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run date**: $(date)" >> $GITHUB_STEP_SUMMARY
+          if [ -f data/processed/drift_detected.flag ]; then
+            echo "- **Drift detected**: ✅ Yes — model retraining triggered" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Drift detected**: ❌ No — model unchanged" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f price-model/retrained_model.pkl ]; then
+            echo "- **Model retrained**: ✅ Yes — pushed to HuggingFace" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Model retrained**: ❌ No drift, no retraining needed" >> $GITHUB_STEP_SUMMARY
+          fi

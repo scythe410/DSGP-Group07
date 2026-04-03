@@ -123,6 +123,7 @@ preprocessing_pipeline = None
 yolo_damage_model = None
 seg_model = None
 seg_processor = None
+anomaly_model_bundle = None   # dict: {scaler, model, features, hard_bounds}
 
 # ---------------------------------------------------------------------------
 # Helper utilities
@@ -307,15 +308,17 @@ def _generate_vlm_description(annotated_image: Image.Image, damage_types: list, 
 
 @app.on_event("startup")
 def load_models():
-    global prediction_model, preprocessing_pipeline, yolo_damage_model, seg_model, seg_processor
+    global prediction_model, preprocessing_pipeline, yolo_damage_model, seg_model, seg_processor, anomaly_model_bundle
 
-    model_path  = os.path.join(ROOT_DIR, "price-model", "best_optimized_model.pkl")
-    preproc_path = os.path.join(ROOT_DIR, "price-model", "preprocessing_optimized.pkl")
-    yolo_path   = os.path.join(ROOT_DIR, "damage-detection", "models", "v2.pt")
-    seg_path    = os.path.join(ROOT_DIR, "damage-detection", "models", "best_model")
+    model_path    = os.path.join(ROOT_DIR, "price-model", "best_optimized_model.pkl")
+    preproc_path  = os.path.join(ROOT_DIR, "price-model", "preprocessing_optimized.pkl")
+    anomaly_path  = os.path.join(ROOT_DIR, "price-model", "anomaly_model.pkl")
+    yolo_path     = os.path.join(ROOT_DIR, "damage-detection", "models", "v2.pt")
+    seg_path      = os.path.join(ROOT_DIR, "damage-detection", "models", "best_model")
 
-    prediction_model      = _safe_load("XGBoost Price Model",     lambda: pickle.load(open(model_path, 'rb')))
-    preprocessing_pipeline = _safe_load("Preprocessing Pipeline", lambda: pickle.load(open(preproc_path, 'rb')))
+    prediction_model       = _safe_load("XGBoost Price Model",      lambda: pickle.load(open(model_path, 'rb')))
+    preprocessing_pipeline = _safe_load("Preprocessing Pipeline",   lambda: pickle.load(open(preproc_path, 'rb')))
+    anomaly_model_bundle   = _safe_load("Anomaly Detection Model",  lambda: pickle.load(open(anomaly_path, 'rb')))
 
     if os.path.exists(yolo_path):
         yolo_damage_model = _safe_load("YOLO Damage Model", lambda: YOLO(yolo_path))
@@ -350,7 +353,6 @@ def predict_car_value(specs: CarSpecRequest):
     if prediction_model is None or preprocessing_pipeline is None:
         raise HTTPException(status_code=500, detail="Models are not loaded.")
 
-    # TODO: Connect anomaly detection (One-Class SVM) before predicting
     option_count = sum([specs.Has_AC, specs.Has_PowerSteering, specs.Has_PowerMirror, specs.Has_PowerWindow])
 
     input_data = {
@@ -362,6 +364,54 @@ def predict_car_value(specs: CarSpecRequest):
         'Has_PowerMirror': int(specs.Has_PowerMirror), 'Has_PowerWindow': int(specs.Has_PowerWindow),
     }
 
+    # --- Anomaly Detection on user input ---
+    # Two-layer check: hard bounds (immediate reject) + OneClassSVM (statistical)
+    is_anomalous = False
+    anomaly_reason = None
+
+    if anomaly_model_bundle is not None:
+        hard_bounds = anomaly_model_bundle.get("hard_bounds", {})
+
+        # Layer 1: Hard bounds — catch obviously impossible values
+        checks = [
+            ("Engine (cc)",  specs.Engine_cc,  "Engine size"),
+            ("Mileage (km)", specs.Mileage_km, "Mileage"),
+            ("YOM",          specs.YOM,         "Year of manufacture"),
+        ]
+        for field, value, label in checks:
+            if field in hard_bounds:
+                lo, hi = hard_bounds[field]
+                if not (lo <= value <= hi):
+                    is_anomalous = True
+                    anomaly_reason = f"{label} value {value:,} is outside the plausible range ({lo:,}–{hi:,})."
+                    print(f"[ANOMALY] Hard bound triggered: {anomaly_reason}")
+                    break
+
+        # Layer 2: OneClassSVM statistical check (only if hard bounds passed)
+        if not is_anomalous:
+            try:
+                import pandas as pd
+                scaler   = anomaly_model_bundle["scaler"]
+                oc_svm   = anomaly_model_bundle["model"]
+                features = anomaly_model_bundle["features"]   # ["Price", "Mileage (km)", "Engine (cc)"]
+                # Use Brand_Avg_Price as a proxy for Price since we don't have actual price yet
+                # We scale with 0 for Price so SVM only weighs Mileage + Engine statistically
+                probe = pd.DataFrame([{
+                    "Price":        0,   # unknown at input time — neutral
+                    "Mileage (km)": specs.Mileage_km,
+                    "Engine (cc)":  specs.Engine_cc,
+                }])[features]
+                scaled = scaler.transform(probe)
+                svm_pred = oc_svm.predict(scaled)[0]
+                if svm_pred == -1:
+                    is_anomalous = True
+                    anomaly_reason = "The combination of mileage and engine size appears statistically unusual for Sri Lankan vehicles."
+                    print(f"[ANOMALY] SVM flagged input: mileage={specs.Mileage_km}, engine={specs.Engine_cc}")
+            except Exception as e:
+                print(f"[ANOMALY CHECK ERROR] {e}. Skipping SVM check.")
+    else:
+        print("[WARNING] Anomaly model not loaded — skipping input validation.")
+
     try:
         prediction, _ = predict_price(input_data, prediction_model, preprocessing_pipeline)
         if prediction is None:
@@ -369,8 +419,9 @@ def predict_car_value(specs: CarSpecRequest):
         return {
             "status": "success",
             "predicted_price_lkr": int(prediction),
-            "is_anomalous": False,   # Placeholder until SVM is connected
-            "confidence_score": 0.95,
+            "is_anomalous": is_anomalous,
+            "anomaly_reason": anomaly_reason,
+            "confidence_score": 0.75 if is_anomalous else 0.95,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

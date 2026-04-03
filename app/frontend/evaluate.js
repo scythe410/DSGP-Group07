@@ -114,6 +114,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('invalid-image-modal').style.display = 'none';
     }
 
+    /** Shows a styled amber warning banner when vehicle specs are statistically unusual. */
+    function showAnomalyWarning(reason) {
+        if (document.getElementById('anomaly-banner')) return;
+        const banner = document.createElement('div');
+        banner.id = 'anomaly-banner';
+        banner.style.cssText = [
+            'position:fixed', 'top:20px', 'left:50%', 'transform:translateX(-50%)',
+            'z-index:9999', 'display:flex', 'align-items:center', 'gap:12px',
+            'background:rgba(255,100,0,0.12)', 'backdrop-filter:blur(12px)',
+            'border:1.5px solid rgba(255,100,0,0.45)', 'border-radius:14px',
+            'padding:14px 20px', 'max-width:500px', 'width:90%',
+            'box-shadow:0 8px 32px rgba(255,80,0,0.15)',
+            'animation:slideDown 0.35s ease',
+        ].join(';');
+        banner.innerHTML = `
+            <ion-icon name="alert-circle-outline" style="font-size:22px;color:#F97316;flex-shrink:0;"></ion-icon>
+            <div style="flex:1;">
+                <p style="margin:0;font-weight:700;font-size:14px;color:#7C2D12;">Unusual Vehicle Specs Detected</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#92400E;line-height:1.4;">${reason} The price estimate may be less accurate — please double-check your inputs.</p>
+            </div>
+            <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:#92400E;font-size:18px;line-height:1;flex-shrink:0;">&#x2715;</button>
+        `;
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 15000);
+    }
+
     /** Shows a styled in-page warning banner when Gemini quota is exceeded. */
     function showGeminiWarning() {
         // Avoid duplicates
@@ -251,6 +277,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show Gemini quota warning if any image analysis had Gemini skipped
         const geminiWasSkipped = validResults.some(r => r.gemini_skipped === true);
         if (geminiWasSkipped) showGeminiWarning();
+
+        // Show anomaly warning if the price model flagged the input specs as unusual
+        if (priceData.is_anomalous && priceData.anomaly_reason) {
+            showAnomalyWarning(priceData.anomaly_reason);
+        }
+
         // Show results layout
         document.getElementById('setup-state').style.display = 'none';
         document.getElementById('results-state').style.display = 'block';
