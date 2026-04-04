@@ -83,6 +83,7 @@ def main():
         logging.error("Drift detection failed. Aborting pipeline.")
         sys.exit(1)
 
+
     # 5. Check whether retraining should happen
     drift_flagged = os.path.exists(DRIFT_FLAG_FILE)
 
@@ -90,16 +91,45 @@ def main():
         logging.info("Drift detected — proceeding to model retraining.")
     elif FORCE_RETRAIN:
         logging.info("FORCE_RETRAIN=true — triggering retraining regardless of drift.")
-        logging.info("Safety: using full baseline dataset for training to avoid low-data overfitting.")
-        # Copy the full 11k-row baseline as the training source so the model
-        # isn't retrained on only the small scrape (e.g. 4 pages = ~200 rows).
-        os.makedirs(os.path.dirname(LATEST_CSV), exist_ok=True)
-        shutil.copy(BASELINE_CSV, LATEST_CSV)
-        logging.info(f"Copied baseline ({BASELINE_CSV}) → {LATEST_CSV}")
     else:
         logging.info("No drift detected and FORCE_RETRAIN=false. Skipping model retraining.")
 
     if drift_flagged or FORCE_RETRAIN:
+        # ── Merge new scraped data with the historical baseline ──────────────
+        # Retraining ALWAYS uses baseline + new data so the model retains
+        # all historical market knowledge while also learning from new listings.
+        # This avoids low-data overfitting when scraping only a few pages.
+        try:
+            import pandas as pd
+            os.makedirs(os.path.dirname(LATEST_CSV), exist_ok=True)
+
+            baseline_df = pd.read_csv(BASELINE_CSV)
+            baseline_df.columns = [c.strip() for c in baseline_df.columns]
+            logging.info(f"Baseline rows loaded: {len(baseline_df):,}")
+
+            if os.path.exists(LATEST_CSV):
+                new_df = pd.read_csv(LATEST_CSV)
+                new_df.columns = [c.strip() for c in new_df.columns]
+                logging.info(f"New scraped rows loaded: {len(new_df):,}")
+
+                # Stack and deduplicate (new data takes priority on duplicates)
+                combined = pd.concat([baseline_df, new_df], ignore_index=True)
+                combined.drop_duplicates(inplace=True)
+                logging.info(f"Combined dataset: {len(combined):,} rows "
+                             f"(baseline {len(baseline_df):,} + new {len(new_df):,}, "
+                             f"deduped {len(baseline_df)+len(new_df)-len(combined):,})")
+            else:
+                combined = baseline_df
+                logging.info("No new scraped data found — retraining on baseline only.")
+
+            combined.to_csv(LATEST_CSV, index=False)
+            logging.info(f"Combined training data written to {LATEST_CSV}")
+
+        except Exception as e:
+            logging.error(f"Failed to merge datasets: {e}. Aborting retraining.")
+            sys.exit(1)
+
+        # ── Retrain the model ────────────────────────────────────────────────
         if not run_script(TRAINER_SCRIPT, "Model Trainer"):
             logging.error("Model training failed.")
             sys.exit(1)
@@ -117,4 +147,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
