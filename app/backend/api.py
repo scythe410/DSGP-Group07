@@ -47,18 +47,12 @@ from predictor import predict_price
 # Constants
 # ---------------------------------------------------------------------------
 
-# Repair cost tiers based on SegFormer pixel area AS A PERCENTAGE of total image area.
-# Using percentage makes tiers resolution-independent (works for phone photos, webcam, etc.)
-# Each entry: (max_damage_pct, repair_action, cost_lkr). None = catch-all.
-REPAIR_TIERS = [
-    (1.5,  "Paintless Dent Repair",        5_000),   # <1.5%  — small ding/hail dent
-    (6.0,  "Panel Beating",               12_000),   # <6.0%  — moderate dent, 1 panel
-    (None, "Panel Replacement + Repaint", 35_000),   # ≥6.0%  — severe / multi-panel
-]
+from damage_utils import REPAIR_TIERS, MIN_SEGFORMER_DAMAGE_PX, estimate_repair, filter_detections_by_mask
 
-# Minimum SegFormer pixel area to count as real surface damage (filters out noise).
-# YOLO misses fine scratches — SegFormer is the fallback signal for paint/surface damage.
-MIN_SEGFORMER_DAMAGE_PX = 500
+# Private aliases keep existing internal call sites working unchanged
+_estimate_repair            = estimate_repair
+_filter_detections_by_mask  = filter_detections_by_mask
+
 
 GATEKEEPER_PROMPT = (
     "You are a strict vehicle image classifier. "
