@@ -47,12 +47,13 @@ from predictor import predict_price
 # Constants
 # ---------------------------------------------------------------------------
 
-# Repair cost tiers based on SegFormer pixel area.
-# Each entry: (max_pixel_area, repair_action, cost_lkr). None = catch-all.
+# Repair cost tiers based on SegFormer pixel area AS A PERCENTAGE of total image area.
+# Using percentage makes tiers resolution-independent (works for phone photos, webcam, etc.)
+# Each entry: (max_damage_pct, repair_action, cost_lkr). None = catch-all.
 REPAIR_TIERS = [
-    (5_000,  "Paintless Dent Repair",        5_000),
-    (15_000, "Panel Beating",               12_000),
-    (None,   "Panel Replacement + Repaint", 35_000),
+    (1.5,  "Paintless Dent Repair",        5_000),   # <1.5%  — small ding/hail dent
+    (6.0,  "Panel Beating",               12_000),   # <6.0%  — moderate dent, 1 panel
+    (None, "Panel Replacement + Repaint", 35_000),   # ≥6.0%  — severe / multi-panel
 ]
 
 # Minimum SegFormer pixel area to count as real surface damage (filters out noise).
@@ -266,11 +267,14 @@ def _filter_detections_by_mask(detailed_detections: list, mask) -> tuple:
     return {d['class'] for d in filtered}, filtered
 
 
-def _estimate_repair(dent_area: int) -> tuple:
-    """Returns (repair_action, cost_lkr) from the REPAIR_TIERS table."""
-    for max_area, repair, cost in REPAIR_TIERS:
-        if max_area is None or dent_area < max_area:
-            return repair, cost
+def _estimate_repair(dent_area: int, total_pixels: int) -> tuple:
+    """Maps SegFormer pixel area to a repair action and cost.
+    Uses percentage of image area so results are resolution-independent."""
+    damage_pct = (dent_area / total_pixels * 100) if total_pixels > 0 else 0
+    for max_pct, repair, cost in REPAIR_TIERS:
+        if max_pct is None or damage_pct < max_pct:
+            return repair, cost, round(damage_pct, 2)
+    return REPAIR_TIERS[-1][1], REPAIR_TIERS[-1][2], round(damage_pct, 2)
 
 
 def _generate_vlm_description(annotated_image: Image.Image, damage_types: list, dent_area: int, repair: str) -> tuple:
@@ -474,8 +478,9 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
             detected_groups_list = ["scratches"]
             print(f"[INFO] YOLO found no bounding boxes, but SegFormer detected {dent_area:,}px of scratch-level surface damage.")
 
-        # Step 5: Repair cost estimation (driven by SegFormer pixel area)
-        repair, cost = _estimate_repair(dent_area)
+        # Step 5: Repair cost estimation (driven by SegFormer pixel area as % of image)
+        total_pixels = image.size[0] * image.size[1]
+        repair, cost, damage_pct = _estimate_repair(dent_area, total_pixels)
 
         # Step 6: Gemini VLM damage description
         vlm_reasoning, vlm_skipped = _generate_vlm_description(annotated_image, detected_groups_list, dent_area, repair)
@@ -489,6 +494,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
             "vlm_reasoning": vlm_reasoning,
             "estimated_cost_lkr": cost,
             "repair_action": repair,
+            "damage_pct": damage_pct,
             "detections": detailed_detections,
             "gemini_skipped": gemini_skipped,
         }

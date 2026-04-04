@@ -297,8 +297,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('res-condition').innerText = payload.Condition;
         document.getElementById('res-engine').innerText   = `${payload.Engine_cc}cc`;
 
-        const finalPrice = priceData.predicted_price_lkr || 14500000;
-        document.getElementById('res-price').innerText = `LKR ${finalPrice.toLocaleString('en-US')}`;
+        const priceEl = document.getElementById('res-price');
+        if (priceData.predicted_price_lkr && priceData.predicted_price_lkr > 0) {
+            priceEl.innerText = `LKR ${priceData.predicted_price_lkr.toLocaleString('en-US')}`;
+            priceEl.style.color = '';
+        } else {
+            priceEl.innerText = 'Price unavailable — server offline';
+            priceEl.style.color = '#ef4444';
+            priceEl.style.fontSize = '1rem';
+        }
 
         // Hero image — first valid result
         const first = validResults[0];
@@ -365,7 +372,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-            }).then(r => r.json()).catch(() => ({ predicted_price_lkr: 14500000 }));
+            }).then(async r => {
+                if (!r.ok) {
+                    const err = await r.json().catch(() => ({}));
+                    console.warn('[predict_price] API error:', r.status, err.detail);
+                    return { predicted_price_lkr: null, _error: err.detail || `HTTP ${r.status}` };
+                }
+                return r.json();
+            }).catch(err => {
+                console.warn('[predict_price] Network error:', err);
+                return { predicted_price_lkr: null, _error: 'Network error' };
+            });
 
             const damageReqs = queuedFiles.map(file => {
                 const fd = new FormData();
