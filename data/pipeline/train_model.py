@@ -103,7 +103,7 @@ def train_model(X, y):
     logging.info(f"{model_name} Performance: MSE={mse:.2f}, MAE={mae:.2f}, R2={r2:.4f}")
     
     model.fit(X, y)
-    return model, r2
+    return model, r2, mae
 
 def main():
     logging.info("Starting Model Retraining...")
@@ -144,7 +144,7 @@ def main():
     y = df['Price'] # Original prices
     
     # 5. Train
-    model, r2 = train_model(X, y)
+    model, r2, mae = train_model(X, y)
     
     if r2 < 0.5: # Arbitrary threshold
         logging.warning(f"Model R2 score {r2:.4f} is low. Creating backup but maybe not deploying automatically.")
@@ -186,6 +186,7 @@ def main():
 
         # ── Push to HuggingFace Hub ──────────────────────────────────────────
         hf_token = os.environ.get("HF_TOKEN")
+        hf_pushed = False
         if hf_token:
             try:
                 from huggingface_hub import HfApi
@@ -199,7 +200,7 @@ def main():
                     path_in_repo="best_optimized_model.pkl",
                     repo_id=HF_REPO,
                     repo_type="model",
-                    commit_message=f"Auto-retrain: R²={r2:.4f}, MAE={mae:.0f} LKR ({timestamp_str})",
+                    commit_message=f"Auto-retrain: R\u00b2={r2:.4f}, MAE={mae:.0f} LKR ({timestamp_str})",
                 )
                 api.upload_file(
                     path_or_fileobj=retrained_prep_path,
@@ -209,9 +210,15 @@ def main():
                     commit_message=f"Auto-retrain preprocessing ({timestamp_str})",
                 )
                 logging.info(f"[HF] Pushed retrained model to {HF_REPO}")
+                hf_pushed = True
+
+                # Write success flag so the CI summary can detect it
+                flag_path = os.path.join(PRICE_MODEL_DIR, ".hf_push_success")
+                with open(flag_path, "w") as f:
+                    f.write(f"Pushed at {timestamp_str} | R²={r2:.4f} MAE={mae:.0f}\n")
 
                 # ── Restart HuggingFace Space so it loads the new model ──────────
-                HF_SPACE = "scythe410/dsgp-007"
+                HF_SPACE = "scythe410/dsgp_007"  # underscore, not hyphen
                 try:
                     import requests
                     restart_url = f"https://huggingface.co/api/spaces/{HF_SPACE}/restart"
@@ -219,7 +226,7 @@ def main():
                                          headers={"Authorization": f"Bearer {hf_token}"},
                                          timeout=30)
                     if resp.status_code == 200:
-                        logging.info(f"[HF] Space '{HF_SPACE}' restart triggered — new model will load on startup.")
+                        logging.info(f"[HF] Space '{HF_SPACE}' restart triggered \u2014 new model will load on startup.")
                     else:
                         logging.warning(f"[HF] Space restart returned HTTP {resp.status_code}: {resp.text[:200]}")
                 except Exception as e:
@@ -228,9 +235,12 @@ def main():
             except Exception as e:
                 logging.error(f"[HF] Upload failed: {e}. Retrained model is saved locally only.")
         else:
-            logging.warning("HF_TOKEN not set — skipping HuggingFace push. Model saved locally only.")
+            logging.warning("HF_TOKEN not set \u2014 skipping HuggingFace push. Model saved locally only.")
+
+        return hf_pushed
     else:
-        logging.warning(f"R² = {r2:.4f} is below 0.5 — model NOT pushed to HuggingFace.")
+        logging.warning(f"R\u00b2 = {r2:.4f} is below 0.5 \u2014 model NOT pushed to HuggingFace.")
+        return False
 
 if __name__ == "__main__":
     main()

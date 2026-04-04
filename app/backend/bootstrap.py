@@ -51,23 +51,22 @@ def bootstrap_models():
         )
         print("[BOOTSTRAP] SegFormer model ready.")
 
-    # XGBoost price prediction model + preprocessing pipeline
-    # Uses _is_real_file() to detect and re-download git-LFS pointer stubs
-    # that HF Space may have copied into the container instead of real weights.
-    if not _is_real_file(xgb_path) or not _is_real_file(prep_path):
-        print("[BOOTSTRAP] Downloading XGBoost price model from HF Hub...")
-        os.makedirs(os.path.dirname(xgb_path), exist_ok=True)
-        for fname in ["best_optimized_model.pkl", "preprocessing_optimized.pkl"]:
-            local = os.path.join(os.path.dirname(xgb_path), fname)
-            if os.path.exists(local):
-                os.remove(local)   # delete pointer stub before overwriting
-            hf_hub_download(
-                repo_id="scythe410/sri-lankan-vehicle-price-prediction",
-                filename=fname,
-                local_dir=os.path.dirname(xgb_path),
-                token=hf_token,
-            )
-        print("[BOOTSTRAP] XGBoost models ready.")
+    # XGBoost/LightGBM price prediction model + preprocessing pipeline
+    # Always re-download so the Space automatically picks up newly retrained
+    # models pushed by the GitHub Actions pipeline (no stale cached versions).
+    print("[BOOTSTRAP] Downloading latest price model from HF Hub...")
+    os.makedirs(os.path.dirname(xgb_path), exist_ok=True)
+    for fname in ["best_optimized_model.pkl", "preprocessing_optimized.pkl"]:
+        local = os.path.join(os.path.dirname(xgb_path), fname)
+        if os.path.exists(local):
+            os.remove(local)   # remove any stale / LFS-pointer version
+        hf_hub_download(
+            repo_id="scythe410/sri-lankan-vehicle-price-prediction",
+            filename=fname,
+            local_dir=os.path.dirname(xgb_path),
+            token=hf_token,
+        )
+    print("[BOOTSTRAP] Price model ready.")
 
     # Anomaly detection model (OneClassSVM)
     anomaly_path = os.path.join(ROOT_DIR, "price-model", "anomaly_model.pkl")

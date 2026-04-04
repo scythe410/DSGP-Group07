@@ -42,7 +42,7 @@ jobs:
         run: |
           pip install --upgrade pip
           # Core pipeline dependencies (subset of requirements.txt)
-          pip install pandas scikit-learn xgboost scipy \
+          pip install pandas scikit-learn xgboost lightgbm scipy \
                       selenium webdriver-manager beautifulsoup4 \
                       huggingface_hub requests python-dotenv
 
@@ -79,8 +79,11 @@ jobs:
           else
             echo "- **Drift detected**: ❌ No — model unchanged" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ -f price-model/retrained_model.pkl ]; then
+          if [ -f price-model/.hf_push_success ]; then
             echo "- **Model retrained**: ✅ Yes — pushed to HuggingFace" >> $GITHUB_STEP_SUMMARY
+          elif [ -f price-model/retrained_model.pkl ]; then
+            echo "- **Model retrained**: ⚠️ Trained locally but HuggingFace push FAILED — check logs" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Model retrained**: ❌ No drift, no retraining needed" >> $GITHUB_STEP_SUMMARY
           fi
+
