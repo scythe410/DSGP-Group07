@@ -11,4 +11,4 @@ pinned: false
 # DSGP-Group07
 
 🚀 **Vehicle Price Prediction & Damage Assessment Engine**  
-Powered by FastAPI, YOLO, XGBoost, and Python.
+Powered by FastAPI, YOLO, LightGBM, and Python.
