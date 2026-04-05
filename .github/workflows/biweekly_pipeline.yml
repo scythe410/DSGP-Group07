@@ -65,6 +65,7 @@ jobs:
           path: |
             data/processed/*.csv
             data/raw/quarantined_ads.csv
+            data/raw/debug_page1.html
             data/processed/drift_detected.flag
           retention-days: 30
 

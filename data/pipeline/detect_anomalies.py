@@ -78,21 +78,18 @@ def detect_anomalies(raw_data_path, output_clean_path, output_quarantine_path, h
     return True
 
 if __name__ == "__main__":
-    current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
-    
-    # For testing the script standalone
-    raw_path = os.path.join(project_root, 'data', 'raw', 'listings_latest.csv')
-    clean_path = os.path.join(project_root, 'data', 'raw', 'listings_anomaly_checked.csv')
-    quarantine_path = os.path.join(project_root, 'data', 'raw', 'quarantined_ads.csv')
-    historical_path = os.path.join(project_root, 'data', 'initial-cleaning', 'cleaned-before_log.csv')
-    
-    # Create dummy raw data if testing directly
+
+    raw_path       = os.path.join(project_root, 'data', 'raw', 'listings_latest.csv')
+    clean_path     = os.path.join(project_root, 'data', 'raw', 'listings_anomaly_checked.csv')
+    quarantine_path= os.path.join(project_root, 'data', 'raw', 'quarantined_ads.csv')
+    historical_path= os.path.join(project_root, 'data', 'initial-cleaning', 'cleaned-before_log.csv')
+
     if not os.path.exists(raw_path):
-        print("Creating dummy raw data for standalone test...")
-        os.makedirs(os.path.dirname(raw_path), exist_ok=True)
-        pd.DataFrame([{
-            'Price': 50000000, 'Mileage (km)': 50000, 'Engine (cc)': 800, 'Make': 'Suzuki', 'Model': 'Alto'
-        }]).to_csv(raw_path, index=False)
-    
+        print(f"[ERROR] listings_latest.csv not found at {raw_path}")
+        print("[ERROR] The scraper must run before anomaly detection.")
+        raise SystemExit(1)
+
     detect_anomalies(raw_path, clean_path, quarantine_path, historical_path)
+

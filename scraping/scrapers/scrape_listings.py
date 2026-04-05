@@ -24,9 +24,11 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "raw")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Generate filename with timestamp
+# Timestamped archive (for historical records)
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 CSV_FILENAME = os.path.join(DATA_DIR, f'listings_{TIMESTAMP}.csv')
+# Canonical "latest" output that the downstream pipeline always reads
+LATEST_CSV  = os.path.join(DATA_DIR, 'listings_latest.csv')
 
 def setup_driver():
     """Initializes Selenium with IMAGE LOADING DISABLED for speed."""
@@ -40,8 +42,8 @@ def setup_driver():
     prefs = {"profile.managed_default_content_settings.images": 2}
     chrome_options.add_experimental_option("prefs", prefs)
 
-    # Standard User Agent
-    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+    # Up-to-date user agent matching current LTS Chrome
+    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -112,6 +114,20 @@ def main():
 
         print(f"Total Ads Found: {len(all_ad_links)}")
 
+        if len(all_ad_links) == 0:
+            # Save page source so we can debug bot-blocking / selector changes
+            debug_path = os.path.join(DATA_DIR, 'debug_page1.html')
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            print(f"  [DEBUG] 0 ads found — page source saved to {debug_path}")
+            print("  [WARN] Possible bot detection or riyasewana.com HTML change.")
+            # Write empty listings_latest.csv so downstream steps skip gracefully
+            pd.DataFrame(columns=['Url','Title','Contact','Price','Make','Model',
+                                   'Mileage (km)','Engine (cc)','Gear','Fuel Type',
+                                   'Condition']).to_csv(LATEST_CSV, index=False)
+            print(f"  [INFO] Empty listings_latest.csv written — pipeline will skip retrain.")
+            return
+
         # Limit for test purposes if too many
         if len(all_ad_links) > 20:
             print("Limiting to first 10 ads for demonstration speed...")
@@ -147,6 +163,11 @@ def main():
             print(f"  [Saved final records to {CSV_FILENAME}]")
 
         print("\nDONE!")
+
+        # Also write to the canonical 'listings_latest.csv' that the pipeline reads
+        import shutil
+        shutil.copy2(CSV_FILENAME, LATEST_CSV)
+        print(f"  [INFO] Copied to {LATEST_CSV}")
 
     except Exception as e:
         print(f"\nCRITICAL ERROR: {e}")
