@@ -1,178 +1,205 @@
+"""
+Scraper for riyasewana.com car listings.
+
+Phase 1 — collect listing URLs from search results pages (li.v-card selector).
+Phase 2 — visit each listing and extract structured data from .detail-row cards.
+
+Always writes listings_latest.csv so downstream pipeline steps can rely on it
+existing.  A timestamped archive copy is kept under data/raw/ for auditing.
+"""
 
 import os
+import re
 import time
+import shutil
+import logging
+from datetime import datetime
+
 import pandas as pd
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
-import logging
-from datetime import datetime
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
-# Configuration
-BASE_URL = "https://riyasewana.com/search/cars"
-# Demo: 4 pages (~220 listings, ~15 min). Full run: END_PAGE = 664 (~110k listings, ~6 hrs)
+# ── Configuration ──────────────────────────────────────────────────────────────
+BASE_URL   = "https://riyasewana.com/search/cars"
 START_PAGE = 1
-END_PAGE = 4
+END_PAGE   = 4      # 4 pages ≈ 160 listings; raise for full historical runs
+MAX_ADS    = 80     # cap per pipeline run to fit within CI time budget
 
-# Directory Setup
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(PROJECT_ROOT, "data", "raw")
+DATA_DIR     = os.path.join(PROJECT_ROOT, "data", "raw")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Timestamped archive (for historical records)
-TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-CSV_FILENAME = os.path.join(DATA_DIR, f'listings_{TIMESTAMP}.csv')
-# Canonical "latest" output that the downstream pipeline always reads
+TIMESTAMP   = datetime.now().strftime("%Y%m%d_%H%M%S")
+CSV_ARCHIVE = os.path.join(DATA_DIR, f'listings_{TIMESTAMP}.csv')
 LATEST_CSV  = os.path.join(DATA_DIR, 'listings_latest.csv')
 
+# Columns expected by the cleaning / training pipeline
+COLUMNS = ['Url', 'Title', 'Price', 'Make', 'Model', 'Year',
+           'Mileage (km)', 'Engine (cc)', 'Gear', 'Fuel Type',
+           'Condition', 'Location']
+
+
+# ── Driver setup ───────────────────────────────────────────────────────────────
 def setup_driver():
-    """Initializes Selenium with IMAGE LOADING DISABLED for speed."""
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-gpu')
-
-    # DISABLE IMAGES
-    prefs = {"profile.managed_default_content_settings.images": 2}
-    chrome_options.add_experimental_option("prefs", prefs)
-
-    # Up-to-date user agent matching current LTS Chrome
-    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    opts = Options()
+    opts.add_argument('--headless')
+    opts.add_argument('--no-sandbox')
+    opts.add_argument('--disable-dev-shm-usage')
+    opts.add_argument('--disable-gpu')
+    opts.add_argument('--disable-blink-features=AutomationControlled')
+    opts.add_experimental_option('excludeSwitches', ['enable-automation'])
+    opts.add_experimental_option('useAutomationExtension', False)
+    # Disable image loading for speed
+    opts.add_experimental_option('prefs',
+        {'profile.managed_default_content_settings.images': 2})
+    opts.add_argument(
+        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    svc = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=svc, options=opts)
+    # Hide automation flag
+    driver.execute_script(
+        "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
     return driver
 
-def scrape_vehicle_details(url, driver):
-    """Scrapes a single page."""
-    try:
+
+# ── Phase 1: collect listing URLs ──────────────────────────────────────────────
+def collect_links(driver):
+    """Return a deduplicated list of listing URLs scraped from search pages."""
+    links = []
+    seen  = set()
+    for page_num in range(START_PAGE, END_PAGE + 1):
+        url = f"{BASE_URL}?page={page_num}"
+        log.info(f"Scanning page {page_num}: {url}")
         driver.get(url)
-        # Sleep time
-        time.sleep(1)
+        time.sleep(3)
 
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        vehicle_data = {'Url': url}
+        page_links = 0
+        for card in soup.select('li.v-card'):
+            a = card.select_one('.v-card-img a[href]')
+            if not a:
+                continue
+            href = a['href'].strip()
+            if not href.startswith('http'):
+                href = 'https:' + href
+            if href not in seen:
+                seen.add(href)
+                links.append(href)
+                page_links += 1
+
+        log.info(f"  → {page_links} new links on page {page_num} "
+                 f"({len(links)} total so far)")
+    return links
+
+
+# ── Phase 2: scrape an individual listing page ─────────────────────────────────
+def scrape_listing(url, driver):
+    """
+    Scrape a single listing page using the new riyasewana.com layout.
+
+    Key selectors (as of 2026-04):
+      Price   : div.price-amount
+      Details : div.detail-row > span.detail-label + span.detail-value
+      Title   : h1
+    """
+    try:
+        driver.get(url)
+        time.sleep(1)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+
+        data = {'Url': url}
 
         # Title
-        title = soup.find('h1')
-        vehicle_data['Title'] = title.get_text(strip=True) if title else 'N/A'
+        h1 = soup.select_one('h1')
+        data['Title'] = h1.get_text(strip=True) if h1 else ''
 
-        # Contact & Price
-        spans = soup.find_all('span', class_='moreph')
-        if len(spans) >= 2:
-            vehicle_data['Contact'] = spans[0].get_text(strip=True)
-            vehicle_data['Price'] = spans[1].get_text(strip=True)
-        elif len(spans) == 1:
-             # Heuristic: if it looks like a price (digits/currency), it's price
-             text = spans[0].get_text(strip=True)
-             if any(char.isdigit() for char in text):
-                 vehicle_data['Price'] = text
-             else:
-                 vehicle_data['Contact'] = text
+        # Price
+        price_el = soup.select_one('.price-amount')
+        data['Price'] = price_el.get_text(strip=True) if price_el else ''
 
-        # Details Table
-        details_table = soup.find('table', class_='moret')
-        if details_table:
-            for row in details_table.find_all('tr'):
-                cells = row.find_all('td')
-                if len(cells) == 4:
-                    vehicle_data[cells[0].get_text(strip=True).replace(":", "")] = cells[1].get_text(strip=True)
-                    vehicle_data[cells[2].get_text(strip=True).replace(":", "")] = cells[3].get_text(strip=True)
-                elif len(cells) == 2:
-                    vehicle_data[cells[0].get_text(strip=True).replace(":", "")] = cells[1].get_text(strip=True)
-        return vehicle_data
+        # Structured detail rows
+        for row in soup.select('.detail-row'):
+            label_el = row.select_one('.detail-label')
+            value_el = row.select_one('.detail-value')
+            if not label_el or not value_el:
+                continue
+            label = label_el.get_text(strip=True)
+            value = value_el.get_text(strip=True)
+
+            # Map site label names → our column names
+            if label == 'Mileage':
+                data['Mileage (km)'] = value
+            elif label in ('Make', 'Model', 'Year', 'Gear', 'Fuel Type',
+                           'Engine (cc)', 'Condition', 'Location'):
+                data[label] = value
+
+        return data
+
     except Exception as e:
-        print(f"Error on {url}: {e}")
+        log.warning(f"Error scraping {url}: {e}")
         return None
 
+
+# ── Main ───────────────────────────────────────────────────────────────────────
 def main():
     driver = setup_driver()
-    all_ad_links = []
-
     try:
-        # Collect Links
-        print(f"PHASE 1: Collecting links from page {START_PAGE} to {END_PAGE}")
-        for page_num in range(START_PAGE, END_PAGE + 1):
-            search_url = f"{BASE_URL}?page={page_num}"
-            print(f"Scanning Page {page_num}...")
+        # ── Phase 1 ──────────────────────────────────────────────────────────
+        log.info(f"PHASE 1: Collecting links (pages {START_PAGE}–{END_PAGE})")
+        links = collect_links(driver)
+        log.info(f"Total links collected: {len(links)}")
 
-            driver.get(search_url)
-            time.sleep(2)
-
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
-            links_on_page = soup.select('li.item h2.more a')
-
-            for link in links_on_page:
-                href = link.get('href')
-                if href: all_ad_links.append(href)
-
-        print(f"Total Ads Found: {len(all_ad_links)}")
-
-        if len(all_ad_links) == 0:
-            # Save page source so we can debug bot-blocking / selector changes
+        if not links:
             debug_path = os.path.join(DATA_DIR, 'debug_page1.html')
             with open(debug_path, 'w', encoding='utf-8') as f:
                 f.write(driver.page_source)
-            print(f"  [DEBUG] 0 ads found — page source saved to {debug_path}")
-            print("  [WARN] Possible bot detection or riyasewana.com HTML change.")
-            # Write empty listings_latest.csv so downstream steps skip gracefully
-            pd.DataFrame(columns=['Url','Title','Contact','Price','Make','Model',
-                                   'Mileage (km)','Engine (cc)','Gear','Fuel Type',
-                                   'Condition']).to_csv(LATEST_CSV, index=False)
-            print(f"  [INFO] Empty listings_latest.csv written — pipeline will skip retrain.")
+            log.warning(f"0 ads found — page source saved to {debug_path}")
+            log.warning("Probable cause: Cloudflare bot detection or HTML structure change.")
+            # Write empty CSV so the pipeline exits cleanly (no false drift)
+            pd.DataFrame(columns=COLUMNS).to_csv(LATEST_CSV, index=False)
             return
 
-        # Limit for test purposes if too many
-        if len(all_ad_links) > 20:
-            print("Limiting to first 10 ads for demonstration speed...")
-            all_ad_links = all_ad_links[:10]
+        if len(links) > MAX_ADS:
+            log.info(f"Capping at {MAX_ADS} ads (pipeline time budget)")
+            links = links[:MAX_ADS]
 
-        # Scrape & Save Incrementally
-        print(f"PHASE 2: Scraping Details")
+        # ── Phase 2 ──────────────────────────────────────────────────────────
+        log.info(f"PHASE 2: Scraping {len(links)} listings")
+        records = []
+        for i, url in enumerate(links, 1):
+            log.info(f"  [{i}/{len(links)}] {url}")
+            rec = scrape_listing(url, driver)
+            if rec:
+                records.append(rec)
+                log.info(f"    → {rec.get('Make','')} {rec.get('Model','')} "
+                         f"{rec.get('Year','')} | {rec.get('Price','')} | "
+                         f"Mileage: {rec.get('Mileage (km)','N/A')}")
 
-        scraped_buffer = []
+        if not records:
+            log.warning("All individual page scrapes failed — writing empty CSV.")
+            pd.DataFrame(columns=COLUMNS).to_csv(LATEST_CSV, index=False)
+            return
 
-        for i, ad_url in enumerate(all_ad_links):
-            print(f"Scraping {i+1}/{len(all_ad_links)}: {ad_url}")
-            data = scrape_vehicle_details(ad_url, driver)
-
-            if data:
-                print(f"  > Found: {data.get('Title', 'N/A')} - {data.get('Price', 'N/A')}")
-                scraped_buffer.append(data)
-
-            # CHECKPOINT: Save every 5 ads
-            if len(scraped_buffer) >= 5:
-                df_batch = pd.DataFrame(scraped_buffer)
-
-                file_exists = os.path.isfile(CSV_FILENAME)
-                df_batch.to_csv(CSV_FILENAME, mode='a', header=not file_exists, index=False)
-                print(f"  [Saved batch to {CSV_FILENAME}]")
-                scraped_buffer = []
-
-        # Save any remaining data in the buffer
-        if scraped_buffer:
-            df_batch = pd.DataFrame(scraped_buffer)
-            file_exists = os.path.isfile(CSV_FILENAME)
-            df_batch.to_csv(CSV_FILENAME, mode='a', header=not file_exists, index=False)
-            print(f"  [Saved final records to {CSV_FILENAME}]")
-
-        print("\nDONE!")
-
-        # Also write to the canonical 'listings_latest.csv' that the pipeline reads
-        import shutil
-        shutil.copy2(CSV_FILENAME, LATEST_CSV)
-        print(f"  [INFO] Copied to {LATEST_CSV}")
+        df = pd.DataFrame(records, columns=COLUMNS)
+        log.info(f"\nDONE — {len(df)} records scraped successfully")
+        df.to_csv(CSV_ARCHIVE, index=False)
+        shutil.copy2(CSV_ARCHIVE, LATEST_CSV)
+        log.info(f"Archive : {CSV_ARCHIVE}")
+        log.info(f"Canonical: {LATEST_CSV}")
 
     except Exception as e:
-        print(f"\nCRITICAL ERROR: {e}")
+        log.error(f"CRITICAL ERROR: {e}")
+        raise
     finally:
         driver.quit()
+
 
 if __name__ == "__main__":
     main()
