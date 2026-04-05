@@ -132,7 +132,7 @@ def main():
     for col in cat_cols:
         if col in features_df.columns:
             le = LabelEncoder()
-            features_df[col] = features_df[col].astype(str)
+            features_df[col] = features_df[col].astype(str).str.strip()
             features_df[col] = le.fit_transform(features_df[col])
             label_encoders[col] = le
             

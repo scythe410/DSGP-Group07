@@ -40,7 +40,7 @@ CSV_ARCHIVE = os.path.join(DATA_DIR, f'listings_{TIMESTAMP}.csv')
 LATEST_CSV  = os.path.join(DATA_DIR, 'listings_latest.csv')
 
 # Columns expected by the cleaning / training pipeline
-COLUMNS = ['Url', 'Title', 'Price', 'Make', 'Model', 'Year',
+COLUMNS = ['Url', 'Title', 'Price', 'Make', 'Model', 'YOM',
            'Mileage (km)', 'Engine (cc)', 'Gear', 'Fuel Type',
            'Condition', 'Location']
 
@@ -136,7 +136,9 @@ def scrape_listing(url, driver):
             # Map site label names → our column names
             if label == 'Mileage':
                 data['Mileage (km)'] = value
-            elif label in ('Make', 'Model', 'Year', 'Gear', 'Fuel Type',
+            elif label == 'Year':
+                data['YOM'] = value   # pipeline expects YOM (Osanda's feature_engineering.py)
+            elif label in ('Make', 'Model', 'Gear', 'Fuel Type',
                            'Engine (cc)', 'Condition', 'Location'):
                 data[label] = value
 
