@@ -141,7 +141,7 @@ def main():
     feature_columns = [c for c in features_df.columns if c not in exclude_cols and pd.api.types.is_numeric_dtype(features_df[c])]
     
     X = features_df[feature_columns].fillna(0).replace([np.inf, -np.inf], 0)
-    y = df['Price'] # Original prices
+    y = features_df['Price']  # Aligned with X (only rows that passed feature engineering)
     
     # 5. Train
     model, r2, mae = train_model(X, y)

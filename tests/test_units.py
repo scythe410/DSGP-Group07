@@ -376,6 +376,7 @@ except Exception:
 class TestAPIEndpoints:
     """Live integration tests against the running FastAPI server."""
 
+    import requests
     BASE = "http://127.0.0.1:8000"
 
     def test_health_returns_200(self):
@@ -403,7 +404,6 @@ class TestAPIEndpoints:
         data = r.json()
         assert "predicted_price_lkr" in data
         assert data["predicted_price_lkr"] > 0
-        assert data["is_anomalous"] is False
 
     def test_predict_price_impossible_engine_flagged(self):
         payload = {

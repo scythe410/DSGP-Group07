@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import os
-import glob
+
 import logging
 from datetime import datetime
 
@@ -16,24 +16,24 @@ PROCESSED_DATA_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
 os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
 
 def load_raw_data():
-    """Load all CSV files from raw directory"""
-    all_files = glob.glob(os.path.join(RAW_DATA_DIR, "*.csv"))
-    if not all_files:
-        logging.warning("No raw data files found.")
-        return None
-    
-    df_list = []
-    for filename in all_files:
-        try:
-            df = pd.read_csv(filename)
-            df_list.append(df)
-        except Exception as e:
-            logging.error(f"Error reading {filename}: {e}")
-            
-    if not df_list:
-        return None
-        
-    return pd.concat(df_list, ignore_index=True)
+    """Load the pipeline's expected input file from the raw directory."""
+    # Priority: anomaly-checked file (output of detect_anomalies.py),
+    # then listings_latest.csv (direct scraper output) as fallback.
+    candidates = [
+        os.path.join(RAW_DATA_DIR, "listings_anomaly_checked.csv"),
+        os.path.join(RAW_DATA_DIR, "listings_latest.csv"),
+    ]
+    for filepath in candidates:
+        if os.path.exists(filepath):
+            try:
+                df = pd.read_csv(filepath)
+                logging.info(f"Loaded {len(df)} rows from {os.path.basename(filepath)}")
+                return df
+            except Exception as e:
+                logging.error(f"Error reading {filepath}: {e}")
+
+    logging.warning("No raw data files found.")
+    return None
 
 def clean_data(df):
     """Apply cleaning transformations based on user's manual logic"""
@@ -71,16 +71,10 @@ def clean_data(df):
         df[engine_col] = df[engine_col].replace(['-', ''], np.nan)
         df[engine_col] = pd.to_numeric(df[engine_col], errors='coerce')
         
-        # Filter 1: Reasonable global limits
-        df = df[
-            (df[engine_col].isna()) | 
-            ((df[engine_col] >= 500) & (df[engine_col] <= 8000))
-        ]
-        
-        # Filter 2: Specific exclusion (Suzuki > 4000)
+        # Exclude Suzuki with implausible engine sizes
         df = df[~((df['Make'] == 'Suzuki') & (df[engine_col] > 4000))]
-        
-        # Filter 3: Final Strict Range
+
+        # Keep only engines in the 600-3500cc range
         df = df[
             (df[engine_col] >= 600) &
             (df[engine_col] < 3500)

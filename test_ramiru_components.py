@@ -16,6 +16,7 @@ import numpy as np
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'price-model'))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'data', 'pipeline'))
+sys.path.insert(0, os.path.join(ROOT_DIR, 'app', 'backend'))
 
 PASS  = "\033[92m PASS\033[0m"
 FAIL  = "\033[91m FAIL\033[0m"
@@ -241,47 +242,17 @@ except Exception as e:
     record("Drift", "Drift detection functions load", False, str(e))
 
 
-# ─────────────────────────────────────────────────────────────────
 # 4. DUAL-SIGNAL DAMAGE DETECTION ALGORITHM
-# ─────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------
 print("\n[4] Dual-Signal Damage Detection Algorithm")
 print("-" * 45)
 
-# Test the mask fusion and cost estimation logic directly
-# (no need for actual model weights — testing the algorithm)
+# Import production functions (NOT re-implemented copies)
+from damage_utils import estimate_repair, filter_detections_by_mask, REPAIR_TIERS, MIN_SEGFORMER_DAMAGE_PX
 
 import numpy as np
 
-def _filter_detections_by_mask(detections, mask):
-    """Mirrors api.py logic"""
-    if mask is None or not detections:
-        return {d['class'] for d in detections}, detections
-    h, w = mask.shape
-    filtered = []
-    for det in detections:
-        x1,y1,x2,y2 = [int(v) for v in det['box']]
-        x1,y1 = max(0,x1), max(0,y1)
-        x2,y2 = min(w,x2), min(h,y2)
-        box_area = (x2-x1)*(y2-y1)
-        if box_area == 0: continue
-        overlap = int(np.sum(mask[y1:y2, x1:x2]))
-        if overlap / box_area >= 0.20:
-            filtered.append(det)
-    if not filtered:
-        return set(), []
-    return {d['class'] for d in filtered}, filtered
-
-REPAIR_TIERS = [
-    (5_000,  "Paintless Dent Repair",        5_000),
-    (15_000, "Panel Beating",               12_000),
-    (None,   "Panel Replacement + Repaint", 35_000),
-]
-def _estimate_repair(dent_area):
-    for max_area, repair, cost in REPAIR_TIERS:
-        if max_area is None or dent_area < max_area:
-            return repair, cost
-
-# 4a. Mask overlap filter: detection inside damage region → kept
+# 4a. Mask overlap filter: detection inside damage region -> kept
 t0 = time.time()
 H, W = 480, 640
 mask = np.zeros((H, W), dtype=bool)
@@ -289,63 +260,65 @@ mask[100:300, 200:400] = True   # damage region in centre
 
 det_inside  = [{"class": "dent",    "confidence": 0.87, "box": [210, 110, 390, 290]}]
 det_outside = [{"class": "scratch", "confidence": 0.75, "box": [10,  10,  80,  70]}]
-det_partial = [{"class": "dent",    "confidence": 0.65, "box": [190, 290, 420, 400]}]  # edge overlap
+det_partial = [{"class": "dent",    "confidence": 0.65, "box": [190, 290, 420, 400]}]
 
-g_in, f_in   = _filter_detections_by_mask(det_inside,  mask)
-g_out, f_out = _filter_detections_by_mask(det_outside, mask)
-g_part, f_part = _filter_detections_by_mask(det_partial, mask)
+g_in, f_in   = filter_detections_by_mask(det_inside,  mask)
+g_out, f_out = filter_detections_by_mask(det_outside, mask)
+g_part, f_part = filter_detections_by_mask(det_partial, mask)
 elapsed_ms = (time.time()-t0)*1000
 
-record("DualSignal", "Detection fully inside damage mask → kept", len(f_in) == 1,
-       f"'dent' box retained (overlap={int(np.sum(mask[110:290, 210:390]))}/{(390-210)*(290-110)} px)")
-record("DualSignal", "Detection fully outside damage mask → filtered out", len(f_out) == 0,
+record("DualSignal", "Detection fully inside damage mask -> kept", len(f_in) == 1,
+       f"'dent' box retained")
+record("DualSignal", "Detection fully outside damage mask -> filtered out", len(f_out) == 0,
        "'scratch' box discarded (0% overlap)")
-record("DualSignal", "Partial overlap (<20%) → filtered out", len(f_part) == 0,
+record("DualSignal", "Partial overlap (<20%) -> filtered out", len(f_part) == 0,
        "Edge-clipping box discarded")
 record("DualSignal", "Mask fusion latency < 5ms", elapsed_ms < 5,
-       f"{elapsed_ms:.2f}ms for 3 detections on {H}×{W} mask")
+       f"{elapsed_ms:.2f}ms for 3 detections on {H}x{W} mask")
 
-# 4b. Cost estimation tiers
+# 4b. Cost estimation tiers (percentage-based, matching production)
+# estimate_repair(dent_area, total_pixels) -> (action, cost, pct)
+TOTAL_PX = 1024 * 768  # representative image
 cases = [
-    (500,    "Paintless Dent Repair",        5_000),
-    (4999,   "Paintless Dent Repair",        5_000),
-    (5000,   "Panel Beating",               12_000),
-    (14999,  "Panel Beating",               12_000),
-    (15000,  "Panel Replacement + Repaint", 35_000),
-    (100000, "Panel Replacement + Repaint", 35_000),
+    (0.5,  "Paintless Dent Repair",        5_000),   # 0.5% < 1.5%
+    (1.0,  "Paintless Dent Repair",        5_000),   # 1.0% < 1.5%
+    (2.0,  "Panel Beating",               12_000),   # 1.5% <= 2.0% < 6.0%
+    (5.0,  "Panel Beating",               12_000),   # 5.0% < 6.0%
+    (8.0,  "Panel Replacement + Repaint", 35_000),   # 8.0% >= 6.0%
+    (20.0, "Panel Replacement + Repaint", 35_000),   # 20.0% >= 6.0%
 ]
 all_tiers_correct = True
-for area, expected_repair, expected_cost in cases:
-    repair, cost = _estimate_repair(area)
+for pct, expected_repair, expected_cost in cases:
+    dent_area = int(TOTAL_PX * pct / 100)
+    repair, cost, _ = estimate_repair(dent_area, TOTAL_PX)
     if repair != expected_repair or cost != expected_cost:
         all_tiers_correct = False
-        record("DualSignal", f"Cost tier for {area:,}px", False,
-               f"Got '{repair}'@{cost:,} — expected '{expected_repair}'@{expected_cost:,}")
+        record("DualSignal", f"Cost tier for {pct}%", False,
+               f"Got '{repair}'@{cost:,} -- expected '{expected_repair}'@{expected_cost:,}")
 record("DualSignal", "All 3 repair cost tiers map correctly", all_tiers_correct,
-       "PDR→LKR 5k, Panel Beating→LKR 12k, Replacement→LKR 35k")
+       "PDR->LKR 5k, Panel Beating->LKR 12k, Replacement->LKR 35k")
 
 # 4c. Dual-signal verdict (YOLO OR SegFormer)
-MIN_SEG_PX = 500
-# Scenario 1: only SegFormer fires (scratch-level — YOLO missed)
+# Scenario 1: only SegFormer fires (scratch-level -- YOLO missed)
 yolo_no = False
-seg_yes  = (2500 >= MIN_SEG_PX)
+seg_yes  = (2500 >= MIN_SEGFORMER_DAMAGE_PX)
 effective = yolo_no or seg_yes
-record("DualSignal", "SegFormer-only signal → damage confirmed", effective,
-       f"YOLO=False, SegFormer={seg_yes} (2500px ≥ {MIN_SEG_PX}px threshold)")
+record("DualSignal", "SegFormer-only signal -> damage confirmed", effective,
+       f"YOLO=False, SegFormer={seg_yes} (2500px >= {MIN_SEGFORMER_DAMAGE_PX}px threshold)")
 
 # Scenario 2: both fire
 yolo_yes = True
-seg_yes2 = (8000 >= MIN_SEG_PX)
+seg_yes2 = (8000 >= MIN_SEGFORMER_DAMAGE_PX)
 effective2 = yolo_yes or seg_yes2
-record("DualSignal", "Both YOLO + SegFormer fire → damage confirmed", effective2,
+record("DualSignal", "Both YOLO + SegFormer fire -> damage confirmed", effective2,
        "Both signals agree")
 
 # Scenario 3: neither fires
 yolo_no2 = False
-seg_no   = (200 < MIN_SEG_PX)
+seg_no   = (200 < MIN_SEGFORMER_DAMAGE_PX)
 effective3 = yolo_no2 or (not seg_no)
-record("DualSignal", "Neither signal fires → no damage", not effective3,
-       f"YOLO=False, SegFormer=False (200px < {MIN_SEG_PX}px threshold)")
+record("DualSignal", "Neither signal fires -> no damage", not effective3,
+       f"YOLO=False, SegFormer=False (200px < {MIN_SEGFORMER_DAMAGE_PX}px threshold)")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -407,8 +380,8 @@ try:
             is_anom = d.get("is_anomalous", False)
             record("API", "/predict_price returns LKR price > 0", price > 0,
                    f"LKR {price:,}")
-            record("API", "/predict_price valid input → not anomalous", not is_anom,
-                   f"is_anomalous={is_anom}, confidence={d.get('confidence_score')}")
+            record("API", "/predict_price valid input -> not anomalous", not is_anom,
+                   f"is_anomalous={is_anom}")
     except Exception as e:
         record("API", "/predict_price valid input → 200", False, f"Server not running: {e}")
 
@@ -431,7 +404,7 @@ try:
                False, f"Server not running: {e}")
 
     # analyze_damage with a real image
-    dummy_jpg = os.path.join(ROOT_DIR, "dummy.jpg")
+    dummy_jpg = os.path.join(ROOT_DIR, "app", "frontend", "dummy.jpg")
     if os.path.exists(dummy_jpg):
         try:
             t0 = time.time()

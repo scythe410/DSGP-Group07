@@ -181,7 +181,7 @@ def main():
             if rec:
                 records.append(rec)
                 log.info(f"    → {rec.get('Make','')} {rec.get('Model','')} "
-                         f"{rec.get('Year','')} | {rec.get('Price','')} | "
+                         f"{rec.get('YOM','')} | {rec.get('Price','')} | "
                          f"Mileage: {rec.get('Mileage (km)','N/A')}")
 
         if not records:

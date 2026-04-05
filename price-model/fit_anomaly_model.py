@@ -62,7 +62,7 @@ def main():
     with open(OUTPUT_PKL, "wb") as f:
         pickle.dump(bundle, f)
 
-    print(f"\n[✓] Saved anomaly model bundle to: {OUTPUT_PKL}")
+    print(f"\n[OK] Saved anomaly model bundle to: {OUTPUT_PKL}")
     print("     Bundle keys: scaler, model, features, hard_bounds")
 
 

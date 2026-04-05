@@ -245,19 +245,23 @@ def _calculate_ratio_features(df, vehicle_age):
 
 def _calculate_categorical_encodings(df):
     """Calculate categorical encoding features"""
+    fuel = str(df['Fuel Type'].values[0]).strip()
+    gear = str(df['Gear'].values[0]).strip()
+    condition = str(df['Condition'].values[0]).strip()
+
     # Frequency encodings
-    df['Fuel_Type_Freq'] = FUEL_TYPE_FREQ.get(df['Fuel Type'].values[0], 2000)
-    df['Gear_Freq'] = GEAR_FREQ.get(df['Gear'].values[0], 2500)
+    df['Fuel_Type_Freq'] = FUEL_TYPE_FREQ.get(fuel, 2000)
+    df['Gear_Freq'] = GEAR_FREQ.get(gear, 2500)
 
     # Ordinal encoding
-    df['Condition_Ordinal'] = CONDITION_MAP.get(df['Condition'].values[0], 2)
+    df['Condition_Ordinal'] = CONDITION_MAP.get(condition, 2)
 
     # Binary indicators
-    df['Is_Petrol'] = 1 if df['Fuel Type'].values[0] == 'Petrol' else 0
-    df['Is_Diesel'] = 1 if df['Fuel Type'].values[0] == 'Diesel' else 0
-    df['Is_Hybrid'] = 1 if df['Fuel Type'].values[0] == 'Hybrid' else 0
+    df['Is_Petrol'] = 1 if fuel == 'Petrol' else 0
+    df['Is_Diesel'] = 1 if fuel == 'Diesel' else 0
+    df['Is_Hybrid'] = 1 if fuel == 'Hybrid' else 0
 
-    df['Is_Auto'] = 1 if df['Gear'].values[0] == 'Auto' else 0
-    df['Is_Manual'] = 1 if df['Gear'].values[0] == 'Manual' else 0
+    df['Is_Auto'] = 1 if gear == 'Automatic' else 0
+    df['Is_Manual'] = 1 if gear == 'Manual' else 0
 
     return df

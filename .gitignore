@@ -20,4 +20,4 @@ data/testing/*.log
 
 # IDE
 .idea/
-.vscode/
+.vscode/test_results.json

@@ -320,9 +320,13 @@ def load_models():
     yolo_path     = os.path.join(ROOT_DIR, "damage-detection", "models", "v2.pt")
     seg_path      = os.path.join(ROOT_DIR, "damage-detection", "models", "best_model")
 
-    prediction_model       = _safe_load("XGBoost Price Model",      lambda: pickle.load(open(model_path, 'rb')))
-    preprocessing_pipeline = _safe_load("Preprocessing Pipeline",   lambda: pickle.load(open(preproc_path, 'rb')))
-    anomaly_model_bundle   = _safe_load("Anomaly Detection Model",  lambda: pickle.load(open(anomaly_path, 'rb')))
+    def _load_pickle(path):
+        with open(path, 'rb') as f:
+            return pickle.load(f)
+
+    prediction_model       = _safe_load("XGBoost Price Model",      lambda: _load_pickle(model_path))
+    preprocessing_pipeline = _safe_load("Preprocessing Pipeline",   lambda: _load_pickle(preproc_path))
+    anomaly_model_bundle   = _safe_load("Anomaly Detection Model",  lambda: _load_pickle(anomaly_path))
 
     if os.path.exists(yolo_path):
         yolo_damage_model = _safe_load("YOLO Damage Model", lambda: YOLO(yolo_path))
@@ -425,7 +429,6 @@ def predict_car_value(specs: CarSpecRequest):
             "predicted_price_lkr": int(prediction),
             "is_anomalous": is_anomalous,
             "anomaly_reason": anomaly_reason,
-            "confidence_score": 0.75 if is_anomalous else 0.95,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -505,7 +508,7 @@ async def analyze_damage_chain(file: UploadFile = File(...)):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "Backend API is humming nicely"}
+    return {"status": "ok", "message": "healthy"}
 
 
 if __name__ == "__main__":

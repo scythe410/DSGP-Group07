@@ -8,11 +8,11 @@ PREPROCESSING_PATH = 'preprocessing_optimized.pkl'
 
 # Application settings
 APP_TITLE = "Car Price Predictor"
-APP_ICON = "🚗"
+APP_ICON = "Car"
 PAGE_LAYOUT = "wide"
 
 # Available options for dropdowns
-AVAILABLE_GEARS = ['Auto', 'Manual', 'Tiptronic']
+AVAILABLE_GEARS = ['Automatic', 'Manual', 'CVT']
 AVAILABLE_FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric']
 AVAILABLE_CONDITIONS = ['Brand New', 'Unregistered', 'Used', 'Reconditioned']
 
@@ -71,9 +71,9 @@ FUEL_TYPE_FREQ = {
 
 # Gear frequency (approximate)
 GEAR_FREQ = {
-    'Auto': 4000,
+    'Automatic': 4000,
     'Manual': 3500,
-    'Tiptronic': 1500
+    'CVT': 1500
 }
 
 # Scoring thresholds

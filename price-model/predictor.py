@@ -33,8 +33,8 @@ def predict_price(input_features, model, preprocessing):
             if col in label_encoders:
                 try:
                     df_features[col] = label_encoders[col].transform([df_features[col].values[0]])[0]
-                except:
-                    # If value not seen during training, use most common (0)
+                except ValueError:
+                    print(f"[PREDICTOR] Unseen label '{df_features[col].values[0]}' for '{col}' — defaulting to 0")
                     df_features[col] = 0
 
         # Select only the features used by the model

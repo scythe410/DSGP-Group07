@@ -23,4 +23,4 @@ api.upload_file(
     repo_type="model",
     commit_message="Add OneClassSVM anomaly detection model (fitted on 11,441 baseline listings)",
 )
-print("[✓] Upload complete.")
+print("[OK] Upload complete.")
