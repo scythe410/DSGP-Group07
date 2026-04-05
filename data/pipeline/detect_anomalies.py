@@ -37,16 +37,47 @@ def detect_anomalies(raw_data_path, output_clean_path, output_quarantine_path, h
     if df_today.empty:
         print("Warning: Scrape file is empty. Skipping anomaly detection.")
         return True
-        
-    # We must ensure today's scrape has the correct column names for scaling
-    # Assuming scrape_listings.py outputs similar columns. If not, mapping is required here.
-    # We will safely drop na for those specific columns just to predict, but keep the original rows for quarantine
+
+    # ── Parse raw text fields into numerics ─────────────────────────────────
+    # The scraper stores the site's raw text (e.g. "Rs. 6,975,000",
+    # "Negotiable", "101,000 km") so we must clean before scaling.
+    df_today = df_today.copy()
+
+    if 'Price' in df_today.columns:
+        df_today['Price'] = (
+            df_today['Price']
+            .astype(str)
+            .str.replace('Rs.', '', regex=False)
+            .str.replace(',', '', regex=False)
+            .str.strip()
+        )
+        # "Negotiable" and any other non-numeric → NaN (dropped below)
+        df_today['Price'] = pd.to_numeric(df_today['Price'], errors='coerce')
+
+    if 'Mileage (km)' in df_today.columns:
+        df_today['Mileage (km)'] = (
+            df_today['Mileage (km)']
+            .astype(str)
+            .str.replace('km', '', regex=False)
+            .str.replace(',', '', regex=False)
+            .str.strip()
+        )
+        df_today['Mileage (km)'] = pd.to_numeric(df_today['Mileage (km)'], errors='coerce')
+
+    if 'Engine (cc)' in df_today.columns:
+        df_today['Engine (cc)'] = pd.to_numeric(
+            df_today['Engine (cc)'].astype(str).str.replace(',', '', regex=False),
+            errors='coerce'
+        )
+    # ────────────────────────────────────────────────────────────────────────
+
     df_pred_set = df_today.dropna(subset=features).copy()
     
     if df_pred_set.empty:
         print("Warning: No valid rows with Price, Mileage, and Engine capacity found to test.")
         df_today.to_csv(output_clean_path, index=False)
         return True
+
         
     # Scale today's data using the fitted scaler
     X_today_scaled = scaler.transform(df_pred_set[features])
