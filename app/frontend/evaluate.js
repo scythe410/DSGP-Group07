@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vehicle Make/Model Dropdown
     // ---------------------------------------------------------------------------
 
-    const makeInput    = document.getElementById('make');
-    const modelInput   = document.getElementById('model');
-    const makeList     = document.getElementById('make-list');
-    const modelList    = document.getElementById('model-list');
+    const makeInput = document.getElementById('make');
+    const modelInput = document.getElementById('model');
+    const makeList = document.getElementById('make-list');
+    const modelList = document.getElementById('model-list');
     const modelWarning = document.getElementById('model-warning');
     let vehicleMapping = {};
 
@@ -61,14 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Image Upload & Preview
     // ---------------------------------------------------------------------------
 
-    const uploadBox        = document.getElementById('multi-upload-box');
-    const fileInput        = document.getElementById('car-images');
+    const uploadBox = document.getElementById('multi-upload-box');
+    const fileInput = document.getElementById('car-images');
     const previewContainer = document.getElementById('image-preview-container');
-    let queuedFiles        = [];
+    let queuedFiles = [];
 
-    uploadBox.addEventListener('click',     (e) => { if (e.target !== fileInput) fileInput.click(); });
-    uploadBox.addEventListener('dragover',  (e) => { e.preventDefault(); uploadBox.classList.add('dragover'); });
-    uploadBox.addEventListener('dragleave', ()  => uploadBox.classList.remove('dragover'));
+    uploadBox.addEventListener('click', (e) => { if (e.target !== fileInput) fileInput.click(); });
+    uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); uploadBox.classList.add('dragover'); });
+    uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('dragover'));
     uploadBox.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadBox.classList.remove('dragover');
@@ -83,10 +83,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 queuedFiles.push(file);
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    // Wrapper keeps image + remove-btn together
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'preview-wrapper';
+
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     img.className = 'preview-img';
-                    previewContainer.appendChild(img);
+
+                    // Small × in upper-right corner
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'preview-remove-btn';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.title = 'Remove this image';
+                    removeBtn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        queuedFiles = queuedFiles.filter(f => f !== file);
+                        wrapper.remove();
+                        const label = uploadBox.querySelector('p');
+                        if (queuedFiles.length === 0) {
+                            label.innerText = 'Drop damage photos here or click to browse';
+                            label.style.color = '';
+                        } else {
+                            label.innerText = `${queuedFiles.length} photo(s) queued for evaluation`;
+                            label.style.color = 'var(--primary-blue)';
+                        }
+                    });
+
+                    wrapper.appendChild(img);
+                    wrapper.appendChild(removeBtn);
+                    previewContainer.appendChild(wrapper);
                 };
                 reader.readAsDataURL(file);
             });
@@ -97,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             label.style.color = 'var(--primary-blue)';
         }
     }
+
 
     // ---------------------------------------------------------------------------
     // UI Helpers
@@ -212,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('invalid-image-modal').style.display = 'flex';
 
         const decision = await new Promise(resolve => {
-            document.getElementById('modal-btn-retry').onclick  = () => { hideModal(); resolve('retry'); };
+            document.getElementById('modal-btn-retry').onclick = () => { hideModal(); resolve('retry'); };
             document.getElementById('modal-btn-ignore').onclick = () => { hideModal(); resolve('ignore'); };
         });
 
@@ -290,12 +317,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
 
         // Hero card specs
-        document.getElementById('res-make').innerText     = payload.Make;
-        document.getElementById('res-model').innerText    = payload.Model;
+        document.getElementById('res-make').innerText = payload.Make;
+        document.getElementById('res-model').innerText = payload.Model;
         document.getElementById('res-subtitle').innerText = `${payload.YOM} - Certified Pre-Purchase Report`;
-        document.getElementById('res-mileage').innerText  = payload.Mileage_km.toLocaleString();
+        document.getElementById('res-mileage').innerText = payload.Mileage_km.toLocaleString();
         document.getElementById('res-condition').innerText = payload.Condition;
-        document.getElementById('res-engine').innerText   = `${payload.Engine_cc}cc`;
+        document.getElementById('res-engine').innerText = `${payload.Engine_cc}cc`;
 
         const priceEl = document.getElementById('res-price');
         if (priceData.predicted_price_lkr && priceData.predicted_price_lkr > 0) {
@@ -325,13 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('res-damage-count').innerText = hits;
-        document.getElementById('res-repair-cost').innerText  = `LKR ${totalEst.toLocaleString()}`;
+        document.getElementById('res-repair-cost').innerText = `LKR ${totalEst.toLocaleString()}`;
 
         // Clean up blob URLs after images have loaded
         setTimeout(() => {
             validResults.forEach(res => {
                 if (res.localImage) {
-                    try { URL.revokeObjectURL(URL.createObjectURL(res.localImage)); } catch (_) {}
+                    try { URL.revokeObjectURL(URL.createObjectURL(res.localImage)); } catch (_) { }
                 }
             });
         }, 8000);
@@ -352,18 +379,18 @@ document.addEventListener('DOMContentLoaded', () => {
         spinner.style.display = 'inline-block';
 
         const payload = {
-            Make:             makeInput.value,
-            Model:            modelInput.value,
-            YOM:              parseInt(document.getElementById('yom').value),
-            Mileage_km:       parseInt(document.getElementById('mileage').value),
-            Engine_cc:        parseInt(document.getElementById('engine').value),
-            Fuel_Type:        document.getElementById('fuel').value,
-            Gear:             document.getElementById('gear').value,
-            Condition:        document.getElementById('condition').value,
-            Has_AC:           document.getElementById('ac').checked,
+            Make: makeInput.value,
+            Model: modelInput.value,
+            YOM: parseInt(document.getElementById('yom').value),
+            Mileage_km: parseInt(document.getElementById('mileage').value),
+            Engine_cc: parseInt(document.getElementById('engine').value),
+            Fuel_Type: document.getElementById('fuel').value,
+            Gear: document.getElementById('gear').value,
+            Condition: document.getElementById('condition').value,
+            Has_AC: document.getElementById('ac').checked,
             Has_PowerSteering: document.getElementById('power-steering').checked,
-            Has_PowerMirror:  document.getElementById('power-mirror').checked,
-            Has_PowerWindow:  document.getElementById('power-window').checked,
+            Has_PowerMirror: document.getElementById('power-mirror').checked,
+            Has_PowerWindow: document.getElementById('power-window').checked,
         };
 
         try {
@@ -403,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const [priceData, ...damageResults] = await Promise.all([priceReq, ...damageReqs]);
 
             // Gatekeeper: split valid vs. invalid
-            const validResults   = damageResults.filter(r => r.status !== 'invalid_image');
+            const validResults = damageResults.filter(r => r.status !== 'invalid_image');
             const invalidResults = damageResults.filter(r => r.status === 'invalid_image');
 
             if (invalidResults.length > 0) {

@@ -344,7 +344,42 @@ body {
     border-radius: 12px;
     object-fit: cover;
     border: 1px solid #EEE;
+    display: block;
 }
+
+/* Wrapper for each preview image — needed for the remove-button overlay */
+.preview-wrapper {
+    position: relative;
+    display: inline-block;
+    line-height: 0;
+}
+
+/* Small × dismiss button in the top-right corner of each preview image */
+.preview-remove-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(30, 30, 30, 0.75);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background 0.18s, transform 0.15s;
+    padding: 0;
+}
+.preview-remove-btn:hover {
+    background: #ef4444;
+    transform: scale(1.15);
+}
+
 
 /* Results Hero Card */
 .car-hero-card {
